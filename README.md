@@ -121,4 +121,4 @@ GitHub Actions 会构建并上传两个下载包。Release 内容会注明下载
 
 ## 许可证
 
-当前仓库尚未添加许可证文件。发布公开版本前，建议补充 `LICENSE`。
+本项目基于 [Apache License 2.0](LICENSE) 发布。
