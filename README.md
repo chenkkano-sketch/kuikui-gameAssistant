@@ -60,6 +60,7 @@ chenkkano-sketch/kuikui-gameAssistant
 - 安装版优先下载 `setup.exe`。
 - 便携版优先下载 `portable.zip`。
 - 设置页可以关闭自动检查，也可以手动检查更新。
+- GitHub API 被限流时，会切换到 Releases 网页跳转线路继续判断最新版本。
 
 ## 从源码运行
 

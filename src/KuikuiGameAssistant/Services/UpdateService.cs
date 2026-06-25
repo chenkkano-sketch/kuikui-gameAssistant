@@ -13,6 +13,8 @@ namespace KuikuiGameAssistant.Services;
 public sealed class UpdateService
 {
     private const string GitHubApiBaseUrl = "https://api.github.com/repos/";
+    private const string GitHubWebBaseUrl = "https://github.com/";
+    private const string PackageBaseName = "KuikuiGameAssistant";
     private const string PortableMarkerFile = "portable.marker";
     private static readonly TimeSpan StartupCheckInterval = TimeSpan.FromHours(24);
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -63,7 +65,8 @@ public sealed class UpdateService
 
             if (!response.IsSuccessStatusCode)
             {
-                return new UpdateCheckResult(false, false, BuildGitHubFailureMessage(response));
+                var fallback = await TryCheckViaLatestRedirectAsync(repository, cancellationToken).ConfigureAwait(false);
+                return fallback ?? new UpdateCheckResult(false, false, BuildGitHubFailureMessage(response));
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
@@ -104,7 +107,8 @@ public sealed class UpdateService
         }
         catch (Exception ex)
         {
-            return new UpdateCheckResult(false, false, $"检查更新失败：{ex.Message}");
+            var fallback = await TryCheckViaLatestRedirectAsync(repository, cancellationToken).ConfigureAwait(false);
+            return fallback ?? new UpdateCheckResult(false, false, $"检查更新失败：{ex.Message}");
         }
     }
 
@@ -198,6 +202,139 @@ public sealed class UpdateService
         return candidates.FirstOrDefault(x => x.Kind == preferredKind)
                ?? candidates.FirstOrDefault(x => x.Kind == UpdatePackageKind.Installer)
                ?? candidates.FirstOrDefault(x => x.Kind == UpdatePackageKind.PortableZip);
+    }
+
+    private async Task<UpdateCheckResult?> TryCheckViaLatestRedirectAsync(string repository, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var releasePageUrl = $"{GitHubWebBaseUrl}{repository}/releases/latest";
+            using var request = new HttpRequestMessage(HttpMethod.Get, releasePageUrl);
+            request.Headers.UserAgent.ParseAdd($"KuikuiGameAssistant/{CurrentVersion}");
+
+            using var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var tagName = ExtractTagName(response.RequestMessage?.RequestUri);
+            if (string.IsNullOrWhiteSpace(tagName))
+            {
+                return null;
+            }
+
+            var latestVersion = ParseVersion(tagName);
+            if (latestVersion is null)
+            {
+                return null;
+            }
+
+            if (latestVersion <= CurrentVersion)
+            {
+                return new UpdateCheckResult(true, false, $"当前已是最新版本 {CurrentVersion}。");
+            }
+
+            var asset = await SelectDeterministicAssetAsync(repository, tagName, latestVersion, cancellationToken).ConfigureAwait(false);
+            if (asset is null)
+            {
+                return new UpdateCheckResult(
+                    false,
+                    false,
+                    $"发现新版本 {tagName}，但无法自动确认下载包。请点击 GitHub 按钮手动下载 Release。");
+            }
+
+            var update = new UpdateRelease(
+                tagName,
+                latestVersion.ToString(),
+                $"{GitHubWebBaseUrl}{repository}/releases/tag/{Uri.EscapeDataString(tagName)}",
+                "通过 GitHub Releases 备用线路发现更新。",
+                asset);
+            return new UpdateCheckResult(true, true, $"发现新版本 {tagName}。", update);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<UpdateAsset?> SelectDeterministicAssetAsync(
+        string repository,
+        string tagName,
+        Version latestVersion,
+        CancellationToken cancellationToken)
+    {
+        var versionText = latestVersion.ToString();
+        var candidates = new[]
+        {
+            new UpdateAssetCandidate($"{PackageBaseName}-{versionText}-setup.exe", UpdatePackageKind.Installer),
+            new UpdateAssetCandidate($"{PackageBaseName}-{versionText}-win-x64-portable.zip", UpdatePackageKind.PortableZip)
+        };
+
+        var preferredKind = IsPortableInstall ? UpdatePackageKind.PortableZip : UpdatePackageKind.Installer;
+        foreach (var candidate in candidates
+                     .OrderBy(x => x.Kind == preferredKind ? 0 : 1)
+                     .ThenBy(x => x.Kind == UpdatePackageKind.Installer ? 0 : 1))
+        {
+            var url = BuildDownloadUrl(repository, tagName, candidate.Name);
+            var size = await TryGetDownloadSizeAsync(url, cancellationToken).ConfigureAwait(false);
+            if (size is not null)
+            {
+                return new UpdateAsset(candidate.Name, url, size.Value, candidate.Kind);
+            }
+        }
+
+        return null;
+    }
+
+    private static async Task<long?> TryGetDownloadSizeAsync(string downloadUrl, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Head, downloadUrl);
+            request.Headers.UserAgent.ParseAdd("KuikuiGameAssistant");
+
+            using var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? response.Content.Headers.ContentLength ?? 0
+                : null;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string BuildDownloadUrl(string repository, string tagName, string assetName)
+    {
+        return $"{GitHubWebBaseUrl}{repository}/releases/download/{Uri.EscapeDataString(tagName)}/{Uri.EscapeDataString(assetName)}";
+    }
+
+    private static string? ExtractTagName(Uri? uri)
+    {
+        if (uri is null)
+        {
+            return null;
+        }
+
+        const string marker = "/releases/tag/";
+        var path = uri.AbsolutePath;
+        var markerIndex = path.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (markerIndex < 0)
+        {
+            return null;
+        }
+
+        var tagName = path[(markerIndex + marker.Length)..].Trim('/');
+        return string.IsNullOrWhiteSpace(tagName) ? null : Uri.UnescapeDataString(tagName);
     }
 
     private static UpdatePackageKind? DetectPackageKind(string assetName)
@@ -402,4 +539,6 @@ Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyConti
         [JsonPropertyName("size")]
         public long Size { get; set; }
     }
+
+    private sealed record UpdateAssetCandidate(string Name, UpdatePackageKind Kind);
 }
