@@ -1,0 +1,155 @@
+<UserControl x:Class="KuikuiGameAssistant.Views.DashboardPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:KuikuiGameAssistant.Controls">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding StatusText}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding UpdatedText}" FontSize="13"
+                           Foreground="{StaticResource TextSecondaryBrush}" />
+            </Grid>
+
+            <ItemsControl ItemsSource="{Binding Metrics}" Margin="0,14,0,0">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="218" Height="132" Margin="0,0,12,12" Padding="16" Style="{StaticResource CardBorderStyle}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="34" Height="34" CornerRadius="8" Background="{StaticResource SurfaceMutedBrush}">
+                                        <TextBlock Text="{Binding Icon}"
+                                                   FontFamily="{StaticResource IconFont}"
+                                                   Foreground="{Binding AccentBrush}"
+                                                   FontSize="16"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Grid.Column="1" Text="{Binding Title}" Margin="10,0,0,0" FontSize="13"
+                                               Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                </Grid>
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding ValueText}" FontSize="31" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Unit}" Margin="7,11,0,0" FontSize="13"
+                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <TextBlock Grid.Row="2" Text="{Binding Subtitle}" FontSize="12"
+                                           Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Grid Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="1*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Height="260" Padding="18" Style="{StaticResource CardBorderStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <TextBlock Text="60 秒负载曲线" FontSize="16" FontWeight="SemiBold" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                                    <Ellipse Width="8" Height="8" Fill="#FF2563EB" VerticalAlignment="Center" />
+                                    <TextBlock Text="CPU" Margin="6,0,0,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                                    <Ellipse Width="8" Height="8" Fill="#FF7C3AED" VerticalAlignment="Center" />
+                                    <TextBlock Text="GPU" Margin="6,0,0,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Fill="#FF059669" VerticalAlignment="Center" />
+                                    <TextBlock Text="内存" Margin="6,0,0,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <controls:HistoryGraph Grid.Row="1"
+                                               Margin="0,18,0,0"
+                                               CpuValues="{Binding CpuHistory}"
+                                               GpuValues="{Binding GpuHistory}"
+                                               MemoryValues="{Binding MemoryHistory}" />
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1" Margin="12,0,0,0" Height="260" Padding="14" Style="{StaticResource CardBorderStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="温度传感器诊断" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="1"
+                                   Text="{Binding TemperatureDiagnosticText}"
+                                   Margin="0,8,0,10"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding TemperatureSensors}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="9,7" Margin="0,0,0,6" Background="{StaticResource SurfaceMutedBrush}" CornerRadius="7">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border Background="#FFEAF1FF" CornerRadius="5" Padding="5,2" Margin="0,0,6,0">
+                                                            <TextBlock Text="{Binding HardwareType}" FontSize="10" Foreground="{StaticResource AccentBrush}" />
+                                                        </Border>
+                                                        <TextBlock Text="{Binding SensorName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding HardwareName}"
+                                                               Margin="0,4,0,0"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding ValueText}"
+                                                           FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"
+                                                           Margin="10,0,0,0" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

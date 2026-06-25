@@ -1,0 +1,58 @@
+<UserControl x:Class="KuikuiGameAssistant.Views.CapturePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1.1*" />
+            <ColumnDefinition Width="1*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Padding="20" Style="{StaticResource CardBorderStyle}">
+            <StackPanel>
+                <TextBlock Text="截图" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="点击后拖拽选择屏幕区域，保存为 PNG。"
+                           Margin="0,6,0,0"
+                           FontSize="13"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap" />
+
+                <Button Style="{StaticResource PrimaryButtonStyle}" Margin="0,22,0,0" HorizontalAlignment="Left"
+                        Click="Screenshot_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE722;" Style="{StaticResource IconTextStyle}" Foreground="White" Margin="0,0,8,0" />
+                        <TextBlock Text="区域截图" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <TextBlock x:Name="ScreenshotStatus" Margin="0,18,0,0" FontSize="13"
+                           Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Column="1" Margin="14,0,0,0" Padding="20" Style="{StaticResource CardBorderStyle}">
+            <StackPanel>
+                <TextBlock Text="录屏" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="当前基础版录制主显示器并保存为 AVI；后续可替换为 Windows.Graphics.Capture + 硬件编码。"
+                           Margin="0,6,0,0"
+                           FontSize="13"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap" />
+
+                <Button x:Name="RecordButton" Style="{StaticResource PrimaryButtonStyle}" Margin="0,22,0,0" HorizontalAlignment="Left"
+                        Click="Record_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE714;" Style="{StaticResource IconTextStyle}" Foreground="White" Margin="0,0,8,0" />
+                        <TextBlock x:Name="RecordButtonText" Text="开始录屏" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <Border Margin="0,18,0,0" Background="{StaticResource SurfaceMutedBrush}" CornerRadius="8" Padding="12">
+                    <TextBlock x:Name="RecordStatus" Text="快捷键：Ctrl+Shift+R。默认 15 FPS，75% 缩放。"
+                               FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                </Border>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
