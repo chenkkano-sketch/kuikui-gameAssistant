@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -13,13 +14,16 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 {
     private readonly Dictionary<WpfTextBox, string> _hotkeyOriginalTexts = new();
     private readonly UpdateService _updateService;
+    private const string RepositoryUrl = "https://github.com/chenkkano-sketch/kuikui-gameAssistant";
+    private const string BlogUrl = "https://www.kkano.cc";
+    private const string TavernUrl = "https://www.kkano.cc/#/tavern";
 
     public SettingsPage(AppSettings settings, UpdateService updateService)
     {
         InitializeComponent();
         _updateService = updateService;
         DataContext = settings;
-        UpdateStatusText.Text = $"当前版本 {_updateService.CurrentVersion}，更新源 {settings.GitHubRepository}";
+        UpdateStatusText.Text = $"当前版本 {_updateService.CurrentVersion}，使用 GitHub Releases 自动更新。";
     }
 
     private async void CheckUpdate_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -80,6 +84,70 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         if (dialog.ShowDialog() == true)
         {
             settings.PresentMonPath = dialog.FileName;
+        }
+    }
+
+    private void RestartAsAdmin_Click(object sender, System.Windows.RoutedEventArgs e)
+    {
+        var exePath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(exePath))
+        {
+            System.Windows.MessageBox.Show(
+                "无法定位当前程序路径。",
+                "管理员重启",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = exePath,
+                UseShellExecute = true,
+                Verb = "runas",
+                WorkingDirectory = AppContext.BaseDirectory
+            });
+            System.Windows.Application.Current.Shutdown();
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            UpdateStatusText.Text = "已取消管理员重启。";
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"管理员重启失败：{ex.Message}",
+                "管理员重启",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+        }
+    }
+
+    private void OpenRepository_Click(object sender, System.Windows.RoutedEventArgs e) => OpenUrl(RepositoryUrl);
+
+    private void OpenBlog_Click(object sender, System.Windows.RoutedEventArgs e) => OpenUrl(BlogUrl);
+
+    private void OpenTavern_Click(object sender, System.Windows.RoutedEventArgs e) => OpenUrl(TavernUrl);
+
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"无法打开链接：{ex.Message}",
+                "打开链接失败",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
         }
     }
 

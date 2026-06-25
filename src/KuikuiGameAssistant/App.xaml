@@ -15,6 +15,9 @@
         <SolidColorBrush x:Key="WindowBackgroundBrush" Color="{StaticResource WindowBackgroundColor}" />
         <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
         <SolidColorBrush x:Key="SurfaceMutedBrush" Color="{StaticResource SurfaceMutedColor}" />
+        <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="TitleBarBrush" Color="#FFF8FAFD" />
+        <SolidColorBrush x:Key="SidebarBrush" Color="#FFEEF3F9" />
         <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
         <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
@@ -117,19 +120,21 @@
         </Style>
 
         <Style TargetType="{x:Type Slider}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="IsMoveToPointEnabled" Value="True" />
             <Setter Property="SmallChange" Value="0.01" />
             <Setter Property="LargeChange" Value="0.05" />
         </Style>
 
         <Style x:Key="InputTextBoxStyle" TargetType="{x:Type TextBox}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Height" Value="38" />
             <Setter Property="MinWidth" Value="80" />
             <Setter Property="Padding" Value="10,0" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-            <Setter Property="Background" Value="#FFFFFFFF" />
+            <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}" />
             <Setter Property="SelectionBrush" Value="#662563EB" />
@@ -160,7 +165,70 @@
             </Setter>
         </Style>
 
+        <Style TargetType="{x:Type ComboBox}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="MinWidth" Value="96" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="SwitchCheckBoxStyle" TargetType="{x:Type CheckBox}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type CheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="Track"
+                                    Width="50"
+                                    Height="28"
+                                    CornerRadius="14"
+                                    Background="{StaticResource BorderBrush}">
+                                <Ellipse x:Name="Thumb"
+                                         Width="22"
+                                         Height="22"
+                                         Margin="3"
+                                         HorizontalAlignment="Left"
+                                         Fill="{StaticResource SurfaceBrush}" />
+                            </Border>
+                            <ContentPresenter Grid.Column="1"
+                                              Margin="10,0,0,0"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Track" Property="Opacity" Value="0.9" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Track" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.48" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="ChromeButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Width" Value="44" />
             <Setter Property="Height" Value="34" />
             <Setter Property="BorderThickness" Value="0" />
@@ -196,6 +264,7 @@
                 </Style>
             </Style.Resources>
             <Setter Property="Height" Value="38" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="MinWidth" Value="96" />
             <Setter Property="Padding" Value="14,0" />
             <Setter Property="BorderThickness" Value="0" />
@@ -237,6 +306,7 @@
         </Style>
 
         <Style x:Key="NavButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Height" Value="42" />
             <Setter Property="Margin" Value="10,2" />
             <Setter Property="Padding" Value="12,0" />

@@ -1,11 +1,11 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Runtime.InteropServices;
-using SharpAvi.Codecs;
-using SharpAvi.Output;
-using System.Windows.Forms;
 using KuikuiGameAssistant.Models;
+using ScreenRecorderLib;
+using DrawingImageFormat = System.Drawing.Imaging.ImageFormat;
+using Forms = System.Windows.Forms;
+using ThreadingTimer = System.Threading.Timer;
 
 namespace KuikuiGameAssistant.Services;
 
@@ -13,9 +13,12 @@ public sealed class CaptureService : IDisposable
 {
     private readonly AppSettings _settings;
     private readonly object _recordingSync = new();
-    private CancellationTokenSource? _recordingCts;
-    private Task? _recordingTask;
+    private Recorder? _recorder;
+    private TaskCompletionSource<CaptureResult>? _recordingCompletion;
+    private ThreadingTimer? _recordingStatusTimer;
     private string? _recordingPath;
+    private DateTimeOffset _recordingStartedAt;
+    private RecordingOptions? _activeOptions;
 
     public event EventHandler<RecordingStatus>? RecordingStatusChanged;
 
@@ -30,14 +33,14 @@ public sealed class CaptureService : IDisposable
         {
             lock (_recordingSync)
             {
-                return _recordingCts is not null;
+                return _recorder is not null;
             }
         }
     }
 
     public Task<CaptureResult> CapturePrimaryScreenAsync()
     {
-        var bounds = Screen.PrimaryScreen?.Bounds;
+        var bounds = Forms.Screen.PrimaryScreen?.Bounds;
         return bounds is null
             ? Task.FromResult(new CaptureResult(false, "未发现主显示器"))
             : CaptureRegionAsync(bounds.Value);
@@ -49,7 +52,7 @@ public sealed class CaptureService : IDisposable
         {
             try
             {
-                var virtualScreen = SystemInformation.VirtualScreen;
+                var virtualScreen = Forms.SystemInformation.VirtualScreen;
                 bounds = Rectangle.Intersect(bounds, virtualScreen);
                 if (bounds.Width <= 0 || bounds.Height <= 0)
                 {
@@ -65,7 +68,7 @@ public sealed class CaptureService : IDisposable
                 using var bitmap = new Bitmap(bounds.Width, bounds.Height);
                 using var graphics = Graphics.FromImage(bitmap);
                 graphics.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
-                bitmap.Save(path, ImageFormat.Png);
+                bitmap.Save(path, DrawingImageFormat.Png);
 
                 return new CaptureResult(true, "截图已保存", path);
             }
@@ -87,7 +90,7 @@ public sealed class CaptureService : IDisposable
 
                 var fileName = $"kuikui_{DateTime.Now:yyyyMMdd_HHmmss}.png";
                 var path = Path.Combine(folder, fileName);
-                bitmap.Save(path, ImageFormat.Png);
+                bitmap.Save(path, DrawingImageFormat.Png);
 
                 return new CaptureResult(true, "截图已保存", path);
             }
@@ -98,16 +101,16 @@ public sealed class CaptureService : IDisposable
         });
     }
 
-    public CaptureResult StartRecording(int framesPerSecond, int scalePercent)
+    public CaptureResult StartRecording(RecordingOptions options)
     {
         lock (_recordingSync)
         {
-            if (_recordingCts is not null)
+            if (_recorder is not null)
             {
                 return new CaptureResult(false, "录屏已经在进行中", _recordingPath);
             }
 
-            var screen = Screen.PrimaryScreen;
+            var screen = Forms.Screen.PrimaryScreen;
             if (screen is null)
             {
                 return new CaptureResult(false, "未发现主显示器");
@@ -116,67 +119,75 @@ public sealed class CaptureService : IDisposable
             var folder = ResolveFolder(_settings.RecordingFolder, AppSettings.DefaultRecordingFolder);
             Directory.CreateDirectory(folder);
 
-            _recordingPath = Path.Combine(folder, $"kuikui_recording_{DateTime.Now:yyyyMMdd_HHmmss}.avi");
-            _recordingCts = new CancellationTokenSource();
-            _recordingTask = Task.Run(() => RecordPrimaryScreen(screen.Bounds, _recordingPath, framesPerSecond, scalePercent, _recordingCts.Token));
-            RaiseRecordingStatus(true, "录屏已开始", _recordingPath, TimeSpan.Zero, 0);
+            _recordingPath = Path.Combine(folder, $"kuikui_recording_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
+            _recordingCompletion = new TaskCompletionSource<CaptureResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _recordingStartedAt = DateTimeOffset.Now;
+            _activeOptions = options;
 
-            return new CaptureResult(true, "录屏已开始", _recordingPath);
+            try
+            {
+                _recorder = Recorder.CreateRecorder(CreateRecorderOptions(screen.Bounds, options));
+                _recorder.OnRecordingComplete += Recorder_OnRecordingComplete;
+                _recorder.OnRecordingFailed += Recorder_OnRecordingFailed;
+                _recorder.OnStatusChanged += Recorder_OnStatusChanged;
+                _recorder.Record(_recordingPath);
+                _recordingStatusTimer = new ThreadingTimer(_ => RaiseRecordingProgress(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+            }
+            catch (Exception ex)
+            {
+                CleanupRecorder();
+                return new CaptureResult(false, $"录屏启动失败：{ex.Message}", _recordingPath);
+            }
+
+            var message = BuildStartMessage(options);
+            RaiseRecordingStatus(true, message, _recordingPath, TimeSpan.Zero, 0);
+            return new CaptureResult(true, message, _recordingPath);
         }
     }
 
     public async Task<CaptureResult> StopRecordingAsync()
     {
-        CancellationTokenSource? cts;
-        Task? task;
-        string? path;
+        Recorder? recorder;
+        TaskCompletionSource<CaptureResult>? completion;
 
         lock (_recordingSync)
         {
-            if (_recordingCts is null)
+            if (_recorder is null || _recordingCompletion is null)
             {
                 return new CaptureResult(false, "当前没有正在录制的视频");
             }
 
-            cts = _recordingCts;
-            task = _recordingTask;
-            path = _recordingPath;
-            _recordingCts = null;
-            _recordingTask = null;
+            recorder = _recorder;
+            completion = _recordingCompletion;
         }
-
-        cts.Cancel();
 
         try
         {
-            if (task is not null)
-            {
-                await task.ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException)
-        {
+            recorder.Stop();
         }
         catch (Exception ex)
         {
-            cts.Dispose();
-            RaiseRecordingStatus(false, $"录屏保存失败：{ex.Message}", path, TimeSpan.Zero, 0);
-            return new CaptureResult(false, $"录屏保存失败：{ex.Message}", path);
+            CompleteRecording(new CaptureResult(false, $"停止录屏失败：{ex.Message}", _recordingPath));
         }
 
-        cts.Dispose();
-        RaiseRecordingStatus(false, "录屏已保存", path, TimeSpan.Zero, 0);
-        return new CaptureResult(true, "录屏已保存", path);
+        var timeout = Task.Delay(TimeSpan.FromSeconds(20));
+        var completed = await Task.WhenAny(completion.Task, timeout).ConfigureAwait(false);
+        if (completed == completion.Task)
+        {
+            return await completion.Task.ConfigureAwait(false);
+        }
+
+        return new CaptureResult(false, "录屏停止超时，文件可能仍在写入", _recordingPath);
     }
 
-    public async Task<CaptureResult> ToggleRecordingAsync(int framesPerSecond, int scalePercent)
+    public async Task<CaptureResult> ToggleRecordingAsync(RecordingOptions options)
     {
         if (IsRecording)
         {
             return await StopRecordingAsync().ConfigureAwait(false);
         }
 
-        return StartRecording(framesPerSecond, scalePercent);
+        return StartRecording(options);
     }
 
     public void Dispose()
@@ -187,55 +198,153 @@ public sealed class CaptureService : IDisposable
         }
     }
 
-    private void RecordPrimaryScreen(Rectangle bounds, string path, int framesPerSecond, int scalePercent, CancellationToken cancellationToken)
+    private static RecorderOptions CreateRecorderOptions(Rectangle bounds, RecordingOptions options)
     {
-        framesPerSecond = Math.Clamp(framesPerSecond, 5, 60);
-        scalePercent = Math.Clamp(scalePercent, 25, 100);
+        var width = MakeEven(bounds.Width * Math.Clamp(options.ScalePercent, 25, 100) / 100);
+        var height = MakeEven(bounds.Height * Math.Clamp(options.ScalePercent, 25, 100) / 100);
+        var audioEnabled = options.RecordSystemAudio || options.RecordMicrophone;
 
-        var width = MakeEven(bounds.Width * scalePercent / 100);
-        var height = MakeEven(bounds.Height * scalePercent / 100);
-        var frameInterval = TimeSpan.FromMilliseconds(1000d / framesPerSecond);
-        var started = DateTimeOffset.Now;
-        var framesWritten = 0;
-
-        using var writer = new AviWriter(path)
+        return new RecorderOptions
         {
-            FramesPerSecond = framesPerSecond,
-            EmitIndex1 = true
+            SourceOptions = new SourceOptions
+            {
+                RecordingSources = new List<RecordingSourceBase>
+                {
+                    new DisplayRecordingSource(DisplayRecordingSource.MainMonitor)
+                }
+            },
+            OutputOptions = new OutputOptions
+            {
+                RecorderMode = RecorderMode.Video,
+                OutputFrameSize = new ScreenSize(width, height),
+                Stretch = StretchMode.Uniform
+            },
+            AudioOptions = new AudioOptions
+            {
+                IsAudioEnabled = audioEnabled,
+                IsOutputDeviceEnabled = options.RecordSystemAudio,
+                IsInputDeviceEnabled = options.RecordMicrophone,
+                Bitrate = AudioBitrate.bitrate_128kbps,
+                Channels = AudioChannels.Stereo,
+                InputVolume = 0.85f,
+                OutputVolume = 0.85f
+            },
+            VideoEncoderOptions = new VideoEncoderOptions
+            {
+                Bitrate = Math.Clamp(options.BitrateKbps, 4000, 16000) * 1000,
+                Framerate = Math.Clamp(options.FramesPerSecond, 30, 120),
+                IsFixedFramerate = true,
+                Encoder = new H264VideoEncoder
+                {
+                    BitrateMode = H264BitrateControlMode.CBR,
+                    EncoderProfile = H264Profile.Main
+                },
+                IsFragmentedMp4Enabled = true,
+                IsHardwareEncodingEnabled = true,
+                IsLowLatencyEnabled = false,
+                IsMp4FastStartEnabled = false,
+                IsThrottlingDisabled = false
+            },
+            MouseOptions = new MouseOptions
+            {
+                IsMousePointerEnabled = options.ShowCursor,
+                IsMouseClicksDetected = false,
+                MouseClickDetectionMode = MouseDetectionMode.Polling
+            },
+            OverlayOptions = new OverLayOptions
+            {
+                Overlays = new List<RecordingOverlayBase>()
+            },
+            SnapshotOptions = new SnapshotOptions
+            {
+                SnapshotsWithVideo = false,
+                SnapshotsIntervalMillis = 1000,
+                SnapshotFormat = ScreenRecorderLib.ImageFormat.PNG
+            },
+            LogOptions = new LogOptions
+            {
+                IsLogEnabled = true,
+                LogFilePath = AppLogService.CurrentLogPath,
+                LogSeverityLevel = ScreenRecorderLib.LogLevel.Debug
+            }
         };
-        var stream = writer.AddMJpegWpfVideoStream(width, height, quality: 85);
+    }
 
-        using var sourceBitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppRgb);
-        using var frameBitmap = new Bitmap(width, height, PixelFormat.Format32bppRgb);
-        using var sourceGraphics = Graphics.FromImage(sourceBitmap);
-        using var frameGraphics = Graphics.FromImage(frameBitmap);
-        frameGraphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+    private void Recorder_OnRecordingComplete(object? sender, RecordingCompleteEventArgs e)
+    {
+        CompleteRecording(new CaptureResult(true, "录屏已保存", e.FilePath));
+    }
 
-        var frameBuffer = new byte[width * height * 4];
-        var nextFrameAt = DateTimeOffset.Now;
+    private void Recorder_OnRecordingFailed(object? sender, RecordingFailedEventArgs e)
+    {
+        CompleteRecording(new CaptureResult(false, $"录屏保存失败：{e.Error}", _recordingPath));
+    }
 
-        while (!cancellationToken.IsCancellationRequested)
+    private void Recorder_OnStatusChanged(object? sender, RecordingStatusEventArgs e)
+    {
+        AppLogService.Info($"Recorder status changed: {e.Status}");
+    }
+
+    private void CompleteRecording(CaptureResult result)
+    {
+        TaskCompletionSource<CaptureResult>? completion;
+        TimeSpan elapsed;
+
+        lock (_recordingSync)
         {
-            sourceGraphics.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
-            frameGraphics.DrawImage(sourceBitmap, new Rectangle(0, 0, width, height));
-
-            CopyBitmapToTopDownBgr32(frameBitmap, frameBuffer);
-            stream.WriteFrame(true, frameBuffer, 0, frameBuffer.Length);
-            framesWritten++;
-
-            var elapsed = DateTimeOffset.Now - started;
-            if (framesWritten == 1 || framesWritten % framesPerSecond == 0)
-            {
-                RaiseRecordingStatus(true, $"录制中 {elapsed:mm\\:ss}", path, elapsed, framesWritten);
-            }
-
-            nextFrameAt += frameInterval;
-            var delay = nextFrameAt - DateTimeOffset.Now;
-            if (delay > TimeSpan.Zero)
-            {
-                cancellationToken.WaitHandle.WaitOne(delay);
-            }
+            elapsed = DateTimeOffset.Now - _recordingStartedAt;
+            completion = _recordingCompletion;
+            CleanupRecorder();
         }
+
+        RaiseRecordingStatus(false, result.Message, result.FilePath, elapsed, EstimateFramesWritten(elapsed));
+        completion?.TrySetResult(result);
+    }
+
+    private void CleanupRecorder()
+    {
+        _recordingStatusTimer?.Dispose();
+        _recordingStatusTimer = null;
+
+        if (_recorder is not null)
+        {
+            _recorder.OnRecordingComplete -= Recorder_OnRecordingComplete;
+            _recorder.OnRecordingFailed -= Recorder_OnRecordingFailed;
+            _recorder.OnStatusChanged -= Recorder_OnStatusChanged;
+            (_recorder as IDisposable)?.Dispose();
+        }
+
+        _recorder = null;
+        _recordingCompletion = null;
+        _recordingPath = null;
+        _activeOptions = null;
+    }
+
+    private void RaiseRecordingProgress()
+    {
+        string? path;
+        TimeSpan elapsed;
+        int frames;
+
+        lock (_recordingSync)
+        {
+            if (_recorder is null)
+            {
+                return;
+            }
+
+            path = _recordingPath;
+            elapsed = DateTimeOffset.Now - _recordingStartedAt;
+            frames = EstimateFramesWritten(elapsed);
+        }
+
+        RaiseRecordingStatus(true, $"录制中 {elapsed:mm\\:ss}", path, elapsed, frames);
+    }
+
+    private int EstimateFramesWritten(TimeSpan elapsed)
+    {
+        var fps = _activeOptions?.FramesPerSecond ?? _settings.RecordingFrameRate;
+        return Math.Max(0, (int)Math.Round(elapsed.TotalSeconds * fps));
     }
 
     private static int MakeEven(int value)
@@ -251,28 +360,30 @@ public sealed class CaptureService : IDisposable
             : Environment.ExpandEnvironmentVariables(folder.Trim());
     }
 
-    private static void CopyBitmapToTopDownBgr32(Bitmap bitmap, byte[] destination)
+    private static string BuildStartMessage(RecordingOptions options)
     {
-        var rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
-        var data = bitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppRgb);
-
-        try
+        var message = $"录屏已开始：{options.FramesPerSecond} FPS，{options.BitrateKbps} kbps，MP4/H.264";
+        if (options.RecordSystemAudio)
         {
-            var stride = Math.Abs(data.Stride);
-            var rowBytes = bitmap.Width * 4;
-            var temp = new byte[stride * bitmap.Height];
-            Marshal.Copy(data.Scan0, temp, 0, temp.Length);
+            message += "，系统声音";
+        }
 
-            for (var y = 0; y < bitmap.Height; y++)
-            {
-                var sourceRow = data.Stride > 0 ? y : bitmap.Height - 1 - y;
-                Buffer.BlockCopy(temp, sourceRow * stride, destination, y * rowBytes, rowBytes);
-            }
-        }
-        finally
+        if (options.RecordMicrophone)
         {
-            bitmap.UnlockBits(data);
+            message += "，麦克风";
         }
+
+        if (options.ShowCursor)
+        {
+            message += "，显示鼠标";
+        }
+
+        if (options.EnableHdr)
+        {
+            message += "。HDR 开关已保存，当前编码器按 SDR H.264 输出";
+        }
+
+        return message;
     }
 
     private void RaiseRecordingStatus(bool isRecording, string message, string? path, TimeSpan elapsed, int framesWritten)

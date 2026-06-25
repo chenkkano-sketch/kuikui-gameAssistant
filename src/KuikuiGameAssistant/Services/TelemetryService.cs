@@ -9,13 +9,19 @@ public sealed class TelemetryService : IDisposable
 {
     private const float MinPlausibleTemperature = 20f;
     private const float MaxPlausibleTemperature = 125f;
+    private static readonly TimeSpan ForegroundPollInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan BackgroundPollInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan TemperatureDiagnosticsInterval = TimeSpan.FromSeconds(5);
     private readonly System.Threading.Timer _timer;
     private readonly object _syncRoot = new();
     private readonly AppSettings _settings;
     private readonly PresentMonService _presentMon;
+    private IReadOnlyList<SensorReading> _lastTemperatureSensors = Array.Empty<SensorReading>();
+    private DateTimeOffset _lastTemperatureDiagnosticsAt = DateTimeOffset.MinValue;
     private Computer? _computer;
     private RealtimeSnapshot _latest = EmptySnapshot("传感器服务启动中");
     private string _status = "传感器服务启动中";
+    private int _polling;
     private bool _disposed;
 
     public TelemetryService(AppSettings settings)
@@ -23,10 +29,12 @@ public sealed class TelemetryService : IDisposable
         _settings = settings;
         _presentMon = new PresentMonService(settings);
         InitializeHardwareMonitor();
-        _timer = new System.Threading.Timer(_ => Poll(), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        _timer = new System.Threading.Timer(_ => Poll(), null, TimeSpan.Zero, ForegroundPollInterval);
     }
 
     public event EventHandler<RealtimeSnapshot>? SnapshotUpdated;
+
+    public bool IsPresentMonEnabled => _settings.EnablePresentMon;
 
     public RealtimeSnapshot Latest
     {
@@ -40,6 +48,37 @@ public sealed class TelemetryService : IDisposable
     }
 
     public void RefreshNow() => Poll();
+
+    public void EnablePresentMon()
+    {
+        if (_settings.EnablePresentMon)
+        {
+            _presentMon.Restart();
+        }
+        else
+        {
+            _settings.EnablePresentMon = true;
+        }
+
+        Poll();
+    }
+
+    public void RestartPresentMon()
+    {
+        _presentMon.Restart();
+        Poll();
+    }
+
+    public void SetBackgroundMode(bool enabled)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        var interval = enabled ? BackgroundPollInterval : ForegroundPollInterval;
+        _timer.Change(TimeSpan.Zero, interval);
+    }
 
     public void Dispose()
     {
@@ -65,10 +104,10 @@ public sealed class TelemetryService : IDisposable
                 IsMemoryEnabled = true,
                 IsMotherboardEnabled = true,
                 IsStorageEnabled = true,
-                IsControllerEnabled = true,
-                IsPowerMonitorEnabled = true,
+                IsControllerEnabled = false,
+                IsPowerMonitorEnabled = false,
                 IsNetworkEnabled = false,
-                IsBatteryEnabled = true
+                IsBatteryEnabled = false
             };
             _computer.Open();
             _status = IsAdministrator()
@@ -89,13 +128,25 @@ public sealed class TelemetryService : IDisposable
             return;
         }
 
-        var snapshot = ReadSnapshot();
-        lock (_syncRoot)
+        if (Interlocked.Exchange(ref _polling, 1) == 1)
         {
-            _latest = snapshot;
+            return;
         }
 
-        SnapshotUpdated?.Invoke(this, snapshot);
+        try
+        {
+            var snapshot = ReadSnapshot();
+            lock (_syncRoot)
+            {
+                _latest = snapshot;
+            }
+
+            SnapshotUpdated?.Invoke(this, snapshot);
+        }
+        finally
+        {
+            Volatile.Write(ref _polling, 0);
+        }
     }
 
     private RealtimeSnapshot ReadSnapshot()
@@ -120,7 +171,7 @@ public sealed class TelemetryService : IDisposable
             var diskTemp = FindDiskTemperature(sensors);
             var memoryLoad = TryGetMemory(out var memoryUsed, out var memoryTotal);
             var frameSnapshot = _presentMon.Latest;
-            var temperatureSensors = BuildTemperatureDiagnostics(sensors);
+            var temperatureSensors = GetTemperatureDiagnostics(sensors);
             var status = BuildStatus(sensors, cpuTemp, gpuTemp, frameSnapshot.Status);
 
             return new RealtimeSnapshot(
@@ -345,6 +396,19 @@ public sealed class TelemetryService : IDisposable
         return sensor.Sensor.Value is >= MinPlausibleTemperature and <= MaxPlausibleTemperature;
     }
 
+    private IReadOnlyList<SensorReading> GetTemperatureDiagnostics((IHardware Hardware, ISensor Sensor)[] sensors)
+    {
+        var now = DateTimeOffset.Now;
+        if (now - _lastTemperatureDiagnosticsAt < TemperatureDiagnosticsInterval)
+        {
+            return _lastTemperatureSensors;
+        }
+
+        _lastTemperatureDiagnosticsAt = now;
+        _lastTemperatureSensors = BuildTemperatureDiagnostics(sensors);
+        return _lastTemperatureSensors;
+    }
+
     private static IReadOnlyList<SensorReading> BuildTemperatureDiagnostics((IHardware Hardware, ISensor Sensor)[] sensors)
     {
         return sensors
@@ -358,7 +422,7 @@ public sealed class TelemetryService : IDisposable
                 x.Hardware.HardwareType.ToString(),
                 x.Sensor.Value,
                 "℃"))
-            .Take(48)
+            .Take(16)
             .ToArray();
     }
 

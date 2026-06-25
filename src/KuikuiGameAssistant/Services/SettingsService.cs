@@ -36,9 +36,21 @@ public sealed class SettingsService
             }
 
             AppSettings = document.App ?? new AppSettings();
-            if (!HasAppProperty(json, nameof(AppSettings.PresentMonPath)))
+            AppSettings.GameFilter ??= new GameFilterSettings();
+            AppSettings.GameFilter.Presets ??= new System.Collections.ObjectModel.ObservableCollection<GameFilterPreset>();
+            if (!HasAppProperty(json, nameof(AppSettings.EnablePresentMon)))
             {
                 AppSettings.EnablePresentMon = true;
+            }
+
+            if (UpdateService.NormalizeRepository(AppSettings.GitHubRepository) is null)
+            {
+                AppSettings.GitHubRepository = AppSettings.DefaultGitHubRepository;
+            }
+
+            if (!AppSettings.MemoryOptimizedDefaultsApplied)
+            {
+                AppSettings.MemoryOptimizedDefaultsApplied = true;
             }
 
             ApplyOverlaySettings(overlaySettings, document.Overlay);

@@ -6,21 +6,31 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
 {
     private bool _startMinimizedToTray;
     private bool _startWithWindows;
+    private bool _closeToTray = true;
     private bool _autoCheckUpdates = true;
     private bool _openScreenshotFolder = true;
     private bool _enablePresentMon = true;
-    private int _recordingFrameRate = 15;
-    private int _recordingScalePercent = 75;
+    private bool _memoryOptimizedDefaultsApplied;
+    private bool _useDarkMode;
+    private bool _recordHdr;
+    private bool _recordSystemAudio;
+    private bool _recordMicrophone;
+    private bool _showMouseCursorInRecording = true;
+    private int _recordingFrameRate = 30;
+    private int _recordingScalePercent = 100;
+    private int _recordingBitrateKbps = 8000;
     private string _presentMonPath = string.Empty;
     private string _screenshotFolder = DefaultScreenshotFolder;
     private string _recordingFolder = DefaultRecordingFolder;
-    private string _gitHubRepository = "chenkkano-sketch/kuikui-gameAssistant";
+    private string _gitHubRepository = DefaultGitHubRepository;
     private string _screenshotHotkeyText = "Ctrl+Shift+S";
     private string _recordingHotkeyText = "Ctrl+Shift+R";
     private string _overlayHotkeyText = "Ctrl+Shift+O";
     private DateTimeOffset _lastUpdateCheckUtc = DateTimeOffset.MinValue;
 
     public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    public const string DefaultGitHubRepository = "chenkkano-sketch/kuikui-gameAssistant";
 
     public static string DefaultScreenshotFolder => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
@@ -44,6 +54,12 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
         set => SetProperty(ref _startWithWindows, value);
     }
 
+    public bool CloseToTray
+    {
+        get => _closeToTray;
+        set => SetProperty(ref _closeToTray, value);
+    }
+
     public bool AutoCheckUpdates
     {
         get => _autoCheckUpdates;
@@ -62,16 +78,58 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
         set => SetProperty(ref _enablePresentMon, value);
     }
 
+    public bool MemoryOptimizedDefaultsApplied
+    {
+        get => _memoryOptimizedDefaultsApplied;
+        set => SetProperty(ref _memoryOptimizedDefaultsApplied, value);
+    }
+
+    public bool UseDarkMode
+    {
+        get => _useDarkMode;
+        set => SetProperty(ref _useDarkMode, value);
+    }
+
     public int RecordingFrameRate
     {
         get => _recordingFrameRate;
-        set => SetProperty(ref _recordingFrameRate, Math.Clamp(value, 5, 60));
+        set => SetProperty(ref _recordingFrameRate, NearestSupported(value, 30, 60, 120));
     }
 
     public int RecordingScalePercent
     {
         get => _recordingScalePercent;
         set => SetProperty(ref _recordingScalePercent, Math.Clamp(value, 25, 100));
+    }
+
+    public int RecordingBitrateKbps
+    {
+        get => _recordingBitrateKbps;
+        set => SetProperty(ref _recordingBitrateKbps, NearestSupported(value, 4000, 8000, 12000, 16000));
+    }
+
+    public bool RecordHdr
+    {
+        get => _recordHdr;
+        set => SetProperty(ref _recordHdr, value);
+    }
+
+    public bool RecordSystemAudio
+    {
+        get => _recordSystemAudio;
+        set => SetProperty(ref _recordSystemAudio, value);
+    }
+
+    public bool RecordMicrophone
+    {
+        get => _recordMicrophone;
+        set => SetProperty(ref _recordMicrophone, value);
+    }
+
+    public bool ShowMouseCursorInRecording
+    {
+        get => _showMouseCursorInRecording;
+        set => SetProperty(ref _showMouseCursorInRecording, value);
     }
 
     public string PresentMonPath
@@ -120,6 +178,25 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
     {
         get => _lastUpdateCheckUtc;
         set => SetProperty(ref _lastUpdateCheckUtc, value);
+    }
+
+    public GameFilterSettings GameFilter { get; set; } = new();
+
+    private static int NearestSupported(int value, params int[] supportedValues)
+    {
+        var nearest = supportedValues[0];
+        var nearestDistance = Math.Abs(value - nearest);
+        foreach (var supportedValue in supportedValues)
+        {
+            var distance = Math.Abs(value - supportedValue);
+            if (distance < nearestDistance)
+            {
+                nearest = supportedValue;
+                nearestDistance = distance;
+            }
+        }
+
+        return nearest;
     }
 
     private void SetProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)

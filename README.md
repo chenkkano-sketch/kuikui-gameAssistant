@@ -11,22 +11,23 @@
 
 ## 下载
 
-首个正式版本：`v1.0.0`
+当前正式版本：`v1.0.1`
 
 前往 [GitHub Releases](https://github.com/chenkkano-sketch/kuikui-gameAssistant/releases/latest) 下载：
 
-- 安装版：`KuikuiGameAssistant-1.0.0-setup.exe`
-- 便携版：`KuikuiGameAssistant-1.0.0-win-x64-portable.zip`
+- 安装版：`KuikuiGameAssistant-1.0.1-setup.exe`
+- 便携版：`KuikuiGameAssistant-1.0.1-win-x64-portable.zip`
 
 安装版适合长期使用，会安装到系统程序目录。便携版适合解压即用，可以放进移动硬盘或工具箱目录。
 
 ## 亮点
 
 - 实时监控：CPU / GPU 负载、温度、内存占用和历史曲线。
-- FPS 采集：内置 PresentMon 支持，读取真实 FPS / FrameTime。
+- FPS 采集：内置 PresentMon 支持，实时监控页可快速启用、重启或管理员重启。
 - 游戏悬浮窗：透明置顶、可拖动、可调颜色、布局、字号和尺寸。
 - 区域截图：拖拽选区、标注、取色、放大镜、快捷复制到剪切板。
-- 基础录屏：快速录制屏幕内容，支持帧率和缩放比例设置。
+- MP4 录屏：基于 ScreenRecorderLib，支持 30 / 60 / 120 FPS、码率、系统声音、麦克风和鼠标指针。
+- 游戏滤镜：支持亮度、对比度、灰度、饱和度、色调、屏幕暗角和预设存档。
 - 全局快捷键：截图、录屏、悬浮窗都可以自定义快捷键。
 - 自动更新：依托 GitHub Releases，支持安装版和便携版各自更新。
 
@@ -81,19 +82,19 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 生成安装版和便携版：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.0
+.\scripts\package.ps1 -Version 1.0.1
 ```
 
 只生成便携 zip：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.0 -SkipInstaller
+.\scripts\package.ps1 -Version 1.0.1 -SkipInstaller
 ```
 
 输出文件：
 
-- `artifacts\KuikuiGameAssistant-1.0.0-setup.exe`
-- `artifacts\KuikuiGameAssistant-1.0.0-win-x64-portable.zip`
+- `artifacts\KuikuiGameAssistant-1.0.1-setup.exe`
+- `artifacts\KuikuiGameAssistant-1.0.1-win-x64-portable.zip`
 
 安装版依赖 Inno Setup 6。GitHub Actions 会自动安装 Inno Setup 并完成发布构建。
 
@@ -102,9 +103,9 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 推送 tag 即可触发正式发布：
 
 ```powershell
-git tag v1.0.0
+git tag v1.0.1
 git push origin main
-git push origin v1.0.0
+git push origin v1.0.1
 ```
 
 GitHub Actions 会构建并上传两个下载包。Release 内容会注明下载版本、安装版文件名和便携版文件名。
@@ -115,7 +116,7 @@ GitHub Actions 会构建并上传两个下载包。Release 内容会注明下载
 - .NET 8
 - LibreHardwareMonitorLib
 - PresentMon
-- SharpAvi
+- ScreenRecorderLib
 - Inno Setup
 - GitHub Actions + GitHub Releases
 

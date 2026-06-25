@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private readonly HardwarePage _hardwarePage;
     private readonly CapturePage _capturePage;
     private readonly OverlayPage _overlayPage;
+    private readonly GameFilterPage _filterPage;
     private readonly SettingsPage _settingsPage;
     private readonly HotkeyService _hotkeys = new();
     private Forms.NotifyIcon? _notifyIcon;
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
         _hardwarePage = new HardwarePage(App.HardwareInfo);
         _capturePage = new CapturePage(App.Capture, App.Settings.AppSettings);
         _overlayPage = new OverlayPage(App.OverlaySettings);
+        _filterPage = new GameFilterPage(App.Settings.AppSettings, App.GameFilters);
         _settingsPage = new SettingsPage(App.Settings.AppSettings, App.Updates);
         App.Settings.AppSettings.PropertyChanged += AppSettings_PropertyChanged;
 
@@ -40,14 +42,37 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        _hotkeys.Attach(this);
-        RegisterConfiguredHotkeys();
-        InitializeTrayIcon();
+        try
+        {
+            _hotkeys.Attach(this);
+            RegisterConfiguredHotkeys();
+        }
+        catch (Exception ex)
+        {
+            AppLogService.Error("Hotkey initialization failed.", ex);
+        }
+
+        try
+        {
+            InitializeTrayIcon();
+        }
+        catch (Exception ex)
+        {
+            AppLogService.Error("Tray icon initialization failed.", ex);
+        }
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        App.Settings.Save(App.OverlaySettings);
+        try
+        {
+            App.Settings.Save(App.OverlaySettings);
+        }
+        catch (Exception ex)
+        {
+            AppLogService.Error("Saving settings while closing failed.", ex);
+        }
+
         base.OnClosing(e);
     }
 
@@ -76,7 +101,7 @@ public partial class MainWindow : Window
             case "Capture":
                 PageHost.Content = _capturePage;
                 PageTitle.Text = "截图录屏";
-                PageSubtitle.Text = "区域截图、基础录屏和可修改快捷键";
+                PageSubtitle.Text = "区域截图、MP4 录屏、画质和音频开关";
                 MarkSelected(CaptureNav);
                 break;
             case "Overlay":
@@ -91,6 +116,12 @@ public partial class MainWindow : Window
                 PageSubtitle.Text = "热键、启动项、文件保存位置和采集组件";
                 MarkSelected(SettingsNav);
                 break;
+            case "Filter":
+                PageHost.Content = _filterPage;
+                PageTitle.Text = "游戏滤镜";
+                PageSubtitle.Text = "色彩、亮度、暗角和沉浸预设";
+                MarkSelected(FilterNav);
+                break;
             default:
                 PageHost.Content = _dashboardPage;
                 PageTitle.Text = "实时监控";
@@ -102,7 +133,7 @@ public partial class MainWindow : Window
 
     private void ResetNavButtons()
     {
-        foreach (var button in new[] { DashboardNav, HardwareNav, CaptureNav, OverlayNav, SettingsNav })
+        foreach (var button in new[] { DashboardNav, HardwareNav, CaptureNav, OverlayNav, FilterNav, SettingsNav })
         {
             button.Background = System.Windows.Media.Brushes.Transparent;
             button.FontWeight = FontWeights.Normal;
@@ -144,7 +175,7 @@ public partial class MainWindow : Window
     public void HideToTray()
     {
         Hide();
-        _notifyIcon?.ShowBalloonTip(1400, "盔盔游戏助手", "已最小化到托盘。", Forms.ToolTipIcon.Info);
+        UpdateTelemetryActivity();
     }
 
     private void ToggleOverlay()
@@ -161,27 +192,22 @@ public partial class MainWindow : Window
             _overlayWindow = null;
             OverlayButtonText.Text = "悬浮窗";
             OverlayButton.ToolTip = "打开悬浮监控窗";
+            UpdateTelemetryActivity();
         };
         _overlayWindow.Show();
+        UpdateTelemetryActivity();
         OverlayButtonText.Text = "关闭";
         OverlayButton.ToolTip = "关闭悬浮监控窗";
     }
 
     private async void CaptureScreenshotFromHotkey()
     {
-        var result = await CaptureRegionFromUserAsync();
-        if (result is not null)
-        {
-            _notifyIcon?.ShowBalloonTip(1600, "截图", result.Message, result.Success ? Forms.ToolTipIcon.Info : Forms.ToolTipIcon.Error);
-        }
+        _ = await CaptureRegionFromUserAsync();
     }
 
     private async void ToggleRecordingFromHotkey()
     {
-        var result = await App.Capture.ToggleRecordingAsync(
-            App.Settings.AppSettings.RecordingFrameRate,
-            App.Settings.AppSettings.RecordingScalePercent);
-        _notifyIcon?.ShowBalloonTip(1600, "录屏", result.Message, result.Success ? Forms.ToolTipIcon.Info : Forms.ToolTipIcon.Error);
+        _ = await App.Capture.ToggleRecordingAsync(RecordingOptions.FromSettings(App.Settings.AppSettings));
     }
 
     private void InitializeTrayIcon()
@@ -238,7 +264,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        _hotkeys.Register(id, modifiers | HotkeyModifiers.NoRepeat, virtualKey, handler);
+        if (!_hotkeys.Register(id, modifiers | HotkeyModifiers.NoRepeat, virtualKey, handler))
+        {
+            AppLogService.Info($"Hotkey registration skipped or failed: {hotkeyText}");
+        }
     }
 
     private void AppSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -253,6 +282,11 @@ public partial class MainWindow : Window
         if (e.PropertyName == nameof(AppSettings.StartWithWindows))
         {
             StartupService.SetEnabled(App.Settings.AppSettings.StartWithWindows);
+        }
+
+        if (e.PropertyName == nameof(AppSettings.UseDarkMode))
+        {
+            AppThemeService.Apply(App.Settings.AppSettings.UseDarkMode);
         }
 
         App.Settings.Save(App.OverlaySettings);
@@ -311,6 +345,13 @@ public partial class MainWindow : Window
         Show();
         WindowState = WindowState.Normal;
         Activate();
+        UpdateTelemetryActivity();
+    }
+
+    private void UpdateTelemetryActivity()
+    {
+        var hasVisibleTelemetrySurface = IsVisible || _overlayWindow is { IsVisible: true };
+        App.Telemetry.SetBackgroundMode(!hasVisibleTelemetrySurface);
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -328,7 +369,16 @@ public partial class MainWindow : Window
 
     private void Maximize_Click(object sender, RoutedEventArgs e) => ToggleMaximize();
 
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Close_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.Settings.AppSettings.CloseToTray)
+        {
+            HideToTray();
+            return;
+        }
+
+        Close();
+    }
 
     private void ToggleMaximize()
     {

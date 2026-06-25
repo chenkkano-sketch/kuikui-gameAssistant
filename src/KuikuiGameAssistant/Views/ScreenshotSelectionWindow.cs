@@ -452,6 +452,7 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
             }
 
             _strokeColor = swatch.Color;
+            ApplyStyleToSelectedAnnotation(updateColor: true, updateWidth: false);
             Invalidate();
             return true;
         }
@@ -464,6 +465,7 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
             }
 
             _strokeWidth = swatch.Width;
+            ApplyStyleToSelectedAnnotation(updateColor: false, updateWidth: true);
             Invalidate();
             return true;
         }
@@ -536,7 +538,7 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         _annotationBeforeEdit = _annotations[_selectedAnnotationIndex];
         _annotationEditStart = point;
         _isEditingAnnotation = true;
-        _styleMenuVisible = false;
+        _styleMenuVisible = true;
         ApplySelectedAnnotationStyle(_annotationBeforeEdit);
         Invalidate();
         return true;
@@ -661,20 +663,65 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         switch (annotation)
         {
             case StrokeAnnotation stroke:
+                _activeTool = AnnotationTool.Pen;
                 _strokeColor = stroke.Color;
                 _strokeWidth = stroke.Width;
                 break;
             case RectangleAnnotation rectangle:
+                _activeTool = AnnotationTool.Rectangle;
                 _strokeColor = rectangle.Color;
                 _strokeWidth = rectangle.Width;
                 break;
             case ArrowAnnotation arrow:
+                _activeTool = AnnotationTool.Arrow;
                 _strokeColor = arrow.Color;
                 _strokeWidth = arrow.Width;
                 break;
             case TextAnnotation text:
+                _activeTool = AnnotationTool.Text;
                 _strokeColor = text.Color;
+                _strokeWidth = StrokeWidthFromFontSize(text.FontSize);
                 break;
+        }
+    }
+
+    private void ApplyStyleToSelectedAnnotation(bool updateColor, bool updateWidth)
+    {
+        if (_selectedAnnotationIndex < 0 || _selectedAnnotationIndex >= _annotations.Count)
+        {
+            return;
+        }
+
+        var annotation = _annotations[_selectedAnnotationIndex];
+        var updated = annotation switch
+        {
+            StrokeAnnotation stroke => stroke with
+            {
+                Color = updateColor ? _strokeColor : stroke.Color,
+                Width = updateWidth ? _strokeWidth : stroke.Width
+            },
+            RectangleAnnotation rectangle => rectangle with
+            {
+                Color = updateColor ? _strokeColor : rectangle.Color,
+                Width = updateWidth ? _strokeWidth : rectangle.Width
+            },
+            ArrowAnnotation arrow => arrow with
+            {
+                Color = updateColor ? _strokeColor : arrow.Color,
+                Width = updateWidth ? _strokeWidth : arrow.Width
+            },
+            TextAnnotation text => text with
+            {
+                Color = updateColor ? _strokeColor : text.Color,
+                FontSize = updateWidth ? FontSizeFromStrokeWidth(_strokeWidth) : text.FontSize
+            },
+            _ => annotation
+        };
+
+        _annotations[_selectedAnnotationIndex] = updated;
+        if (_annotationBeforeEdit is not null)
+        {
+            _annotationBeforeEdit = updated;
         }
     }
 
@@ -768,6 +815,35 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         var dx = start.X - end.X;
         var dy = start.Y - end.Y;
         return Math.Sqrt(dx * dx + dy * dy);
+    }
+
+    private static float FontSizeFromStrokeWidth(float width)
+    {
+        if (width <= 2.1f)
+        {
+            return 13f;
+        }
+
+        if (width <= 4f)
+        {
+            return 15f;
+        }
+
+        if (width <= 6f)
+        {
+            return 19f;
+        }
+
+        return 24f;
+    }
+
+    private static float StrokeWidthFromFontSize(float fontSize)
+    {
+        var options = StrokeWidths
+            .Select(width => new { Width = width, FontSize = FontSizeFromStrokeWidth(width) })
+            .OrderBy(option => Math.Abs(option.FontSize - fontSize))
+            .First();
+        return options.Width;
     }
 
     private void SelectFullScreen()
@@ -1087,13 +1163,9 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
                 break;
             case TextAnnotation text:
                 using (var font = new Font("Segoe UI", text.FontSize, FontStyle.Bold, GraphicsUnit.Point))
-                using (var back = new SolidBrush(Color.FromArgb(210, 17, 24, 39)))
                 using (var fore = new SolidBrush(text.Color))
                 {
-                    var size = graphics.MeasureString(text.Text, font);
-                    var rect = new RectangleF(text.Location.X, text.Location.Y, size.Width + 12, size.Height + 8);
-                    graphics.FillRoundedRectangle(back, rect, 6);
-                    graphics.DrawString(text.Text, font, fore, rect.Left + 6, rect.Top + 4);
+                    graphics.DrawString(text.Text, font, fore, text.Location);
                 }
                 break;
         }

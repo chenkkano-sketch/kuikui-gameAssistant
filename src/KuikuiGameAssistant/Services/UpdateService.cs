@@ -63,7 +63,7 @@ public sealed class UpdateService
 
             if (!response.IsSuccessStatusCode)
             {
-                return new UpdateCheckResult(false, false, $"检查更新失败：GitHub 返回 {(int)response.StatusCode} {response.ReasonPhrase}");
+                return new UpdateCheckResult(false, false, BuildGitHubFailureMessage(response));
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
@@ -221,6 +221,51 @@ public sealed class UpdateService
         await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         await using var destination = File.Create(destinationPath);
         await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string BuildGitHubFailureMessage(HttpResponseMessage response)
+    {
+        if (response.StatusCode == HttpStatusCode.Forbidden && IsRateLimited(response))
+        {
+            var resetText = TryFormatRateLimitReset(response);
+            return string.IsNullOrWhiteSpace(resetText)
+                ? "检查更新失败：GitHub 请求次数已用完，暂时无法判断是不是最新版本。请稍后再试，或点击 GitHub 按钮手动查看 Release。"
+                : $"检查更新失败：GitHub 请求次数已用完，暂时无法判断是不是最新版本。预计 {resetText} 后可重试，也可以点击 GitHub 按钮手动查看 Release。";
+        }
+
+        return $"检查更新失败：GitHub 返回 {(int)response.StatusCode} {response.ReasonPhrase}，无法判断是不是最新版本。请稍后再试，或点击 GitHub 按钮手动查看 Release。";
+    }
+
+    private static bool IsRateLimited(HttpResponseMessage response)
+    {
+        if (response.Headers.TryGetValues("X-RateLimit-Remaining", out var remainingValues)
+            && remainingValues.Any(value => value == "0"))
+        {
+            return true;
+        }
+
+        return response.ReasonPhrase?.Contains("rate", StringComparison.OrdinalIgnoreCase) == true
+               || response.ReasonPhrase?.Contains("limit", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string? TryFormatRateLimitReset(HttpResponseMessage response)
+    {
+        if (!response.Headers.TryGetValues("X-RateLimit-Reset", out var resetValues)
+            || !long.TryParse(resetValues.FirstOrDefault(), out var resetUnixSeconds))
+        {
+            return null;
+        }
+
+        var resetAt = DateTimeOffset.FromUnixTimeSeconds(resetUnixSeconds).ToLocalTime();
+        var remaining = resetAt - DateTimeOffset.Now;
+        if (remaining <= TimeSpan.Zero)
+        {
+            return null;
+        }
+
+        return remaining.TotalMinutes < 1
+            ? "不到 1 分钟"
+            : $"{Math.Ceiling(remaining.TotalMinutes)} 分钟";
     }
 
     private static Version GetCurrentVersion()

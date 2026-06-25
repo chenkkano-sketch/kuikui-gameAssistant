@@ -44,45 +44,15 @@
 
             <Border Padding="18" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
                 <StackPanel>
-                    <TextBlock Text="录屏" FontSize="17" FontWeight="SemiBold" />
-                    <Grid Margin="0,14,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="220" />
-                            <ColumnDefinition Width="56" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="42" />
-                            <RowDefinition Height="42" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Text="帧率" FontSize="13" VerticalAlignment="Center" />
-                        <Slider Grid.Column="1" Minimum="5" Maximum="60"
-                                Value="{Binding RecordingFrameRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" Text="{Binding RecordingFrameRate, StringFormat={}{0} FPS}"
-                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
-                                   HorizontalAlignment="Right" VerticalAlignment="Center" />
-
-                        <TextBlock Grid.Row="1" Text="录制缩放" FontSize="13" VerticalAlignment="Center" />
-                        <Slider Grid.Row="1" Grid.Column="1" Minimum="25" Maximum="100"
-                                Value="{Binding RecordingScalePercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" />
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding RecordingScalePercent, StringFormat={}{0}%}"
-                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
-                                   HorizontalAlignment="Right" VerticalAlignment="Center" />
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-            <Border Padding="18" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
-                <StackPanel>
                     <TextBlock Text="行为" FontSize="17" FontWeight="SemiBold" />
                     <CheckBox Content="开机自动启动"
                               IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
                               Margin="0,14,0,10" />
                     <CheckBox Content="启动后自动最小化到托盘"
                               IsChecked="{Binding StartMinimizedToTray, Mode=TwoWay}"
+                              Margin="0,0,0,10" />
+                    <CheckBox Content="点击关闭按钮时最小化到托盘"
+                              IsChecked="{Binding CloseToTray, Mode=TwoWay}"
                               Margin="0,0,0,10" />
                     <CheckBox Content="截图后打开保存目录"
                               IsChecked="{Binding OpenScreenshotFolder, Mode=TwoWay}"
@@ -98,13 +68,29 @@
                               Margin="0,14,0,10" />
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="86" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="96" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="仓库" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
-                                 Text="{Binding GitHubRepository, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        <StackPanel>
+                            <TextBlock Text="更新源：GitHub Releases"
+                                       FontSize="13"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock Text="作者：盔盔 · 博客 kkano.cc，留言酒馆支持反馈"
+                                       Margin="0,4,0,0"
+                                       FontSize="13"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Height="36"
+                                Width="88"
+                                MinWidth="0"
+                                Margin="8,0,0,0"
+                                Click="OpenRepository_Click">
+                            <TextBlock Text="GitHub" />
+                        </Button>
                         <Button x:Name="CheckUpdateButton"
                                 Grid.Column="2"
                                 Style="{StaticResource SecondaryButtonStyle}"
@@ -116,6 +102,21 @@
                             <TextBlock Text="检查更新" />
                         </Button>
                     </Grid>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                Height="34"
+                                MinWidth="88"
+                                Click="OpenBlog_Click">
+                            <TextBlock Text="盔盔博客" />
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                Height="34"
+                                MinWidth="88"
+                                Margin="8,0,0,0"
+                                Click="OpenTavern_Click">
+                            <TextBlock Text="留言酒馆" />
+                        </Button>
+                    </StackPanel>
                     <TextBlock x:Name="UpdateStatusText"
                                FontSize="13"
                                Foreground="{StaticResource TextSecondaryBrush}"
@@ -158,9 +159,20 @@
             <Border Padding="18" Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
                     <TextBlock Text="FPS 采集" FontSize="17" FontWeight="SemiBold" />
-                    <CheckBox Content="启用 PresentMon FPS 采集"
+                    <CheckBox Content="启用 PresentMon FPS 采集（默认开启，可降低后台占用时关闭）"
                               IsChecked="{Binding EnablePresentMon, Mode=TwoWay}"
                               Margin="0,14,0,10" />
+                    <Button Style="{StaticResource SecondaryButtonStyle}"
+                            Height="34"
+                            MinWidth="118"
+                            HorizontalAlignment="Left"
+                            Margin="0,0,0,10"
+                            Click="RestartAsAdmin_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72E;" Style="{StaticResource IconTextStyle}" Margin="0,0,8,0" />
+                            <TextBlock Text="管理员重启" />
+                        </StackPanel>
+                    </Button>
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="86" />
@@ -175,7 +187,7 @@
                             <TextBlock Text="浏览" />
                         </Button>
                     </Grid>
-                    <TextBlock Text="可留空；程序会搜索 PATH、输出目录和 tools\PresentMon。启用后会读取真实 FPS / FrameTime。"
+                    <TextBlock Text="可留空；程序会搜索 PATH、输出目录和 tools\PresentMon。真实 FPS 采集需要管理员运行，或把当前用户加入 Performance Log Users 组。"
                                FontSize="13"
                                Foreground="{StaticResource TextSecondaryBrush}"
                                TextWrapping="Wrap" />

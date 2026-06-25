@@ -16,6 +16,7 @@ public sealed class PresentMonService : IDisposable
     private string[] _header = Array.Empty<string>();
     private PresentMonFrameSnapshot _latest = new(null, null, "PresentMon 未启用");
     private DateTimeOffset? _lastFrameAt;
+    private string? _lastErrorStatus;
     private bool _disposed;
 
     public PresentMonService(AppSettings settings)
@@ -42,6 +43,8 @@ public sealed class PresentMonService : IDisposable
             }
         }
     }
+
+    public void Restart() => Configure();
 
     public void Dispose()
     {
@@ -122,7 +125,7 @@ public sealed class PresentMonService : IDisposable
                 {
                     if (!_disposed && ReferenceEquals(_process, process))
                     {
-                        _latest = new PresentMonFrameSnapshot(null, null, "PresentMon 已退出");
+                        _latest = new PresentMonFrameSnapshot(null, null, _lastErrorStatus ?? BuildExitStatus(process));
                     }
                 }
             };
@@ -248,11 +251,14 @@ public sealed class PresentMonService : IDisposable
             return;
         }
 
-        if (line.Contains("error", StringComparison.OrdinalIgnoreCase)
-            || line.Contains("failed", StringComparison.OrdinalIgnoreCase)
-            || line.Contains("denied", StringComparison.OrdinalIgnoreCase))
+        var status = BuildErrorStatus(line);
+        if (status is not null)
         {
-            SetLatest(new PresentMonFrameSnapshot(null, null, $"PresentMon：{line.Trim()}"));
+            lock (_syncRoot)
+            {
+                _lastErrorStatus = status;
+                _latest = new PresentMonFrameSnapshot(null, null, status);
+            }
         }
     }
 
@@ -312,6 +318,7 @@ public sealed class PresentMonService : IDisposable
         {
             _samplesByApplication.Clear();
             _lastFrameAt = null;
+            _lastErrorStatus = null;
         }
     }
 
@@ -345,6 +352,42 @@ public sealed class PresentMonService : IDisposable
         }
 
         return null;
+    }
+
+    private static string? BuildErrorStatus(string line)
+    {
+        var text = line.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        if (text.Contains("access denied", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("administrative privileges", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Performance Log Users", StringComparison.OrdinalIgnoreCase))
+        {
+            return "PresentMon 需要管理员权限或加入 Performance Log Users 组";
+        }
+
+        return text.Contains("error", StringComparison.OrdinalIgnoreCase)
+               || text.Contains("failed", StringComparison.OrdinalIgnoreCase)
+               || text.Contains("denied", StringComparison.OrdinalIgnoreCase)
+            ? $"PresentMon：{text}"
+            : null;
+    }
+
+    private static string BuildExitStatus(Process process)
+    {
+        try
+        {
+            return process.ExitCode == 0
+                ? "PresentMon 已退出"
+                : $"PresentMon 已退出，退出码 {process.ExitCode}";
+        }
+        catch
+        {
+            return "PresentMon 已退出";
+        }
     }
 
     private static IEnumerable<string> EnumerateCandidatePaths(string configuredPath)
