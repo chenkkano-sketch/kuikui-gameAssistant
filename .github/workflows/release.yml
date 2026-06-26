@@ -52,6 +52,8 @@ jobs:
           files: |
             artifacts/KuikuiGameAssistant-${{ steps.package.outputs.version }}-win-x64-portable.zip
             artifacts/KuikuiGameAssistant-${{ steps.package.outputs.version }}-setup.exe
+            artifacts/KuikuiGameAssistant-win-x64-portable.zip
+            artifacts/KuikuiGameAssistant-setup.exe
           body: |
             ## 下载版本
 
@@ -62,23 +64,24 @@ jobs:
             - 安装版：KuikuiGameAssistant-${{ steps.package.outputs.version }}-setup.exe
             - 便携版：KuikuiGameAssistant-${{ steps.package.outputs.version }}-win-x64-portable.zip
 
+            ## 固定下载链接
+
+            - 最新安装版：https://github.com/chenkkano-sketch/kuikui-gameAssistant/releases/latest/download/KuikuiGameAssistant-setup.exe
+            - 最新便携版：https://github.com/chenkkano-sketch/kuikui-gameAssistant/releases/latest/download/KuikuiGameAssistant-win-x64-portable.zip
+
             安装版适合长期使用；便携版解压后直接运行 `KuikuiGameAssistant.exe`。
 
-            ## v1.0.1 更新内容
+            ## v1.0.2 更新内容
 
-            - 新增游戏滤镜页面：支持亮度、对比度、灰度、饱和度、色调调节。
-            - 新增屏幕暗角：支持暗角颜色、亮暗、羽化调节，并支持滤镜预设保存、读取、删除和重置。
-            - 新增深色 / 浅色主题切换。
-            - 升级录屏功能：从 SharpAvi 切换到 ScreenRecorderLib，输出 MP4 / H.264。
-            - 录屏新增 30 / 60 / 120 FPS 下拉选择、码率选择、系统声音、麦克风、鼠标指针显示开关。
-            - 截图录屏页新增截图目录和视频目录快速修改。
-            - 实时监控页新增 FPS 采集快捷提示，可直接启用 PresentMon、重启采集、选择 PresentMon 或管理员重启。
-            - FPS 采集默认开启，并优化 PresentMon 权限错误提示。
-            - 优化截图工具：更大的工具栏、左右工具分区、取色器、放大预览、坐标 / 色值显示、`C` 复制色值、双击完成、右键取消。
-            - 修正截图工具保存 / 完成逻辑：保存图片才落盘，完成复制到剪切板。
-            - 文本标注背景改为透明，编辑对象时支持二次修改颜色和粗细。
-            - 设置页新增关闭自动最小化到托盘、作者博客、留言酒馆和 GitHub 跳转。
-            - 自动更新错误提示更清晰，GitHub 403 rate limit 会明确说明无法判断是否最新，并切换到 Releases 网页跳转线路继续检查。
-            - 修复首次启动可能因主题资源只读导致失败的问题。
-            - 移除最小化到托盘、截图、录屏的 Windows 气泡通知。
-            - 移除控件焦点虚线框，减少切换应用回来后的视觉干扰。
+            - FPS 采集重构为 KuikuiTelemetryService 后台服务，接入 PresentMon Core / ETW 原生采集，减少前台权限和回退弹窗。
+            - 温度采集重构为后台遥测服务 + LibreHardwareMonitor，并提供 PawnIO 温度引擎修复入口，改善 Core Ultra、12 代酷睿等 CPU 温度读取。
+            - 实时监控改为模块化架构，支持热插拔模块、每个模块独立选择传感器，并新增功耗、电压、风扇转速、CPU / GPU / 显存频率等指标。
+            - 悬浮窗支持模块化开关，并新增 1% Low FPS 显示。
+            - 硬件信息页重构显卡、显存、CPU、主板、硬盘、显示器和内存识别逻辑，修复显存容量误报。
+            - 全局下拉框改为 Win11 风格控件，修复选中项显示对象名、文字不清、宽度异常和无法选择的问题。
+            - 设置页新增浅色、深色、跟随系统主题；深色模式覆盖主窗口、侧边栏、页面、卡片、输入框、下拉框和滚动条。
+            - 修复主题切换后左侧菜单选中态不立即刷新的问题。
+            - 修复窗口顶部自绘标题栏上方残留系统 frame 的问题。
+            - 主窗口适配 Win11 圆角边缘，并支持最大化时拖动标题栏自动还原窗口。
+            - 修复窗口右上角按钮 ToolTip 中文乱码。
+            - 自动更新新增固定 latest/download 下载直链和设置页复制入口，GitHub API 受限时仍可手动下载。

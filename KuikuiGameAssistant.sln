@@ -4,18 +4,39 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KuikuiGameAssistant", "src\KuikuiGameAssistant\KuikuiGameAssistant.csproj", "{87C6E0EF-8DF1-4D2B-A3C5-A2B3B637DF43}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{947BE5C0-42DB-4DA1-87CF-F0922F45BD3F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KuikuiTelemetryService", "src\KuikuiTelemetryService\KuikuiTelemetryService.csproj", "{A5AD9538-28F1-42C0-A38F-B541FD506F2D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{87C6E0EF-8DF1-4D2B-A3C5-A2B3B637DF43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{87C6E0EF-8DF1-4D2B-A3C5-A2B3B637DF43}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87C6E0EF-8DF1-4D2B-A3C5-A2B3B637DF43}.Debug|x64.ActiveCfg = Debug|x64
+		{87C6E0EF-8DF1-4D2B-A3C5-A2B3B637DF43}.Debug|x64.Build.0 = Debug|x64
 		{87C6E0EF-8DF1-4D2B-A3C5-A2B3B637DF43}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87C6E0EF-8DF1-4D2B-A3C5-A2B3B637DF43}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87C6E0EF-8DF1-4D2B-A3C5-A2B3B637DF43}.Release|x64.ActiveCfg = Release|x64
+		{87C6E0EF-8DF1-4D2B-A3C5-A2B3B637DF43}.Release|x64.Build.0 = Release|x64
+		{A5AD9538-28F1-42C0-A38F-B541FD506F2D}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{A5AD9538-28F1-42C0-A38F-B541FD506F2D}.Debug|Any CPU.Build.0 = Debug|x64
+		{A5AD9538-28F1-42C0-A38F-B541FD506F2D}.Debug|x64.ActiveCfg = Debug|x64
+		{A5AD9538-28F1-42C0-A38F-B541FD506F2D}.Debug|x64.Build.0 = Debug|x64
+		{A5AD9538-28F1-42C0-A38F-B541FD506F2D}.Release|Any CPU.ActiveCfg = Release|x64
+		{A5AD9538-28F1-42C0-A38F-B541FD506F2D}.Release|Any CPU.Build.0 = Release|x64
+		{A5AD9538-28F1-42C0-A38F-B541FD506F2D}.Release|x64.ActiveCfg = Release|x64
+		{A5AD9538-28F1-42C0-A38F-B541FD506F2D}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A5AD9538-28F1-42C0-A38F-B541FD506F2D} = {947BE5C0-42DB-4DA1-87CF-F0922F45BD3F}
 	EndGlobalSection
 EndGlobal

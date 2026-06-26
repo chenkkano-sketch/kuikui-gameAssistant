@@ -16,6 +16,7 @@ public sealed class TelemetryService : IDisposable
     private readonly object _syncRoot = new();
     private readonly AppSettings _settings;
     private readonly PresentMonService _presentMon;
+    private readonly KuikuiTelemetryServiceClient _serviceClient = new();
     private IReadOnlyList<SensorReading> _lastTemperatureSensors = Array.Empty<SensorReading>();
     private DateTimeOffset _lastTemperatureDiagnosticsAt = DateTimeOffset.MinValue;
     private Computer? _computer;
@@ -104,8 +105,8 @@ public sealed class TelemetryService : IDisposable
                 IsMemoryEnabled = true,
                 IsMotherboardEnabled = true,
                 IsStorageEnabled = true,
-                IsControllerEnabled = false,
-                IsPowerMonitorEnabled = false,
+                IsControllerEnabled = true,
+                IsPowerMonitorEnabled = true,
                 IsNetworkEnabled = false,
                 IsBatteryEnabled = false
             };
@@ -153,9 +154,48 @@ public sealed class TelemetryService : IDisposable
     {
         try
         {
+            var hasServiceSnapshot = _serviceClient.TryReadLatest(out var serviceSnapshot);
+            var hasHardwareService = hasServiceSnapshot && serviceSnapshot.SupportsHardwareTelemetry;
+            var serviceStatus = hasServiceSnapshot && serviceSnapshot.IsLegacyService
+                ? $"后台遥测服务需要升级：当前服务只返回 FPS，未包含温度采集；{serviceSnapshot.Status}"
+                : serviceSnapshot.Status;
             if (_computer is null)
             {
-                return EmptySnapshot(_status) with { MemoryLoad = TryGetMemory(out var used, out var total), MemoryUsedGb = used, MemoryTotalGb = total };
+                var emptyFrameSnapshot = hasServiceSnapshot
+                    ? ToFrameSnapshot(serviceSnapshot)
+                    : _presentMon.Latest;
+                var localMemoryLoad = TryGetMemory(out var localMemoryUsed, out var localMemoryTotal);
+                var serviceSensorsWithoutLocalHardware = hasHardwareService ? serviceSnapshot.ToSensors() : Array.Empty<SensorReading>();
+                var mergedSensorsWithoutLocalHardware = AddSyntheticSensors(
+                    serviceSensorsWithoutLocalHardware,
+                    emptyFrameSnapshot,
+                    hasHardwareService ? serviceSnapshot.CpuLoad : null,
+                    hasHardwareService ? serviceSnapshot.CpuTemperature : null,
+                    hasHardwareService ? serviceSnapshot.GpuLoad : null,
+                    hasHardwareService ? serviceSnapshot.GpuTemperature : null,
+                    hasHardwareService ? serviceSnapshot.DiskTemperature : null,
+                    (hasHardwareService ? serviceSnapshot.MemoryLoad : null) ?? localMemoryLoad,
+                    (hasHardwareService ? serviceSnapshot.MemoryUsedGb : null) ?? localMemoryUsed);
+                return EmptySnapshot(hasServiceSnapshot ? serviceStatus : _status) with
+                {
+                    FramesPerSecond = emptyFrameSnapshot.FramesPerSecond,
+                    OnePercentLowFps = emptyFrameSnapshot.OnePercentLowFps,
+                    FrameTimeMs = emptyFrameSnapshot.FrameTimeMs,
+                    CpuLoad = hasHardwareService ? serviceSnapshot.CpuLoad : null,
+                    CpuTemperature = hasHardwareService ? serviceSnapshot.CpuTemperature : null,
+                    CpuTemperatureSource = hasHardwareService ? serviceSnapshot.CpuTemperatureSource : null,
+                    GpuLoad = hasHardwareService ? serviceSnapshot.GpuLoad : null,
+                    GpuLoadSource = hasHardwareService ? serviceSnapshot.GpuLoadSource : null,
+                    GpuTemperature = hasHardwareService ? serviceSnapshot.GpuTemperature : null,
+                    GpuTemperatureSource = hasHardwareService ? serviceSnapshot.GpuTemperatureSource : null,
+                    DiskTemperature = hasHardwareService ? serviceSnapshot.DiskTemperature : null,
+                    DiskTemperatureSource = hasHardwareService ? serviceSnapshot.DiskTemperatureSource : null,
+                    MemoryLoad = (hasHardwareService ? serviceSnapshot.MemoryLoad : null) ?? localMemoryLoad,
+                    MemoryUsedGb = (hasHardwareService ? serviceSnapshot.MemoryUsedGb : null) ?? localMemoryUsed,
+                    MemoryTotalGb = (hasHardwareService ? serviceSnapshot.MemoryTotalGb : null) ?? localMemoryTotal,
+                    TemperatureSensors = hasHardwareService ? serviceSnapshot.ToSensorReadings() : Array.Empty<SensorReading>(),
+                    Sensors = mergedSensorsWithoutLocalHardware
+                };
             }
 
             foreach (var hardware in _computer.Hardware)
@@ -164,15 +204,49 @@ public sealed class TelemetryService : IDisposable
             }
 
             var sensors = EnumerateSensors(_computer.Hardware).ToArray();
-            var cpuLoad = FindCpuLoad(sensors);
-            var cpuTemp = FindCpuTemperature(sensors);
-            var gpuLoad = FindGpuLoad(sensors);
-            var gpuTemp = FindGpuTemperature(sensors);
-            var diskTemp = FindDiskTemperature(sensors);
+            var cpuLoad = (hasHardwareService ? serviceSnapshot.CpuLoad : null) ?? FindCpuLoad(sensors);
+            var cpuTemp = ToTemperatureReading(
+                    hasHardwareService ? serviceSnapshot.CpuTemperature : null,
+                    hasHardwareService ? serviceSnapshot.CpuTemperatureSource : null)
+                ?? FindCpuTemperature(sensors);
+            var gpuLoad = ToSensorReadingValue(
+                    hasHardwareService ? serviceSnapshot.GpuLoad : null,
+                    hasHardwareService ? serviceSnapshot.GpuLoadSource : null)
+                ?? FindGpuLoad(sensors);
+            var gpuTemp = ToTemperatureReading(
+                    hasHardwareService ? serviceSnapshot.GpuTemperature : null,
+                    hasHardwareService ? serviceSnapshot.GpuTemperatureSource : null)
+                ?? FindGpuTemperature(sensors);
+            var diskTemp = ToTemperatureReading(
+                    hasHardwareService ? serviceSnapshot.DiskTemperature : null,
+                    hasHardwareService ? serviceSnapshot.DiskTemperatureSource : null)
+                ?? FindDiskTemperature(sensors);
             var memoryLoad = TryGetMemory(out var memoryUsed, out var memoryTotal);
-            var frameSnapshot = _presentMon.Latest;
-            var temperatureSensors = GetTemperatureDiagnostics(sensors);
-            var status = BuildStatus(sensors, cpuTemp, gpuTemp, frameSnapshot.Status);
+            var frameSnapshot = hasServiceSnapshot
+                ? ToFrameSnapshot(serviceSnapshot)
+                : _presentMon.Latest;
+            var serviceTemperatureSensors = hasHardwareService
+                ? serviceSnapshot.ToSensorReadings()
+                : Array.Empty<SensorReading>();
+            var temperatureSensors = serviceTemperatureSensors.Count > 0
+                ? serviceTemperatureSensors
+                : GetTemperatureDiagnostics(sensors);
+            var hardwareSensors = hasHardwareService
+                ? serviceSnapshot.ToSensors()
+                : BuildSensorCatalog(sensors);
+            var sensorCatalog = AddSyntheticSensors(
+                hardwareSensors,
+                frameSnapshot,
+                cpuLoad,
+                cpuTemp?.Value,
+                gpuLoad?.Value,
+                gpuTemp?.Value,
+                diskTemp?.Value,
+                (hasHardwareService ? serviceSnapshot.MemoryLoad : null) ?? memoryLoad,
+                (hasHardwareService ? serviceSnapshot.MemoryUsedGb : null) ?? memoryUsed);
+            var status = hasServiceSnapshot
+                ? serviceStatus
+                : BuildStatus(sensors, cpuTemp, gpuTemp, frameSnapshot.Status);
 
             return new RealtimeSnapshot(
                 DateTimeOffset.Now,
@@ -187,11 +261,15 @@ public sealed class TelemetryService : IDisposable
                 GpuTemperatureSource: gpuTemp?.Source,
                 DiskTemperature: diskTemp?.Value,
                 DiskTemperatureSource: diskTemp?.Source,
-                MemoryLoad: memoryLoad,
-                MemoryUsedGb: memoryUsed,
-                MemoryTotalGb: memoryTotal,
+                MemoryLoad: (hasHardwareService ? serviceSnapshot.MemoryLoad : null) ?? memoryLoad,
+                MemoryUsedGb: (hasHardwareService ? serviceSnapshot.MemoryUsedGb : null) ?? memoryUsed,
+                MemoryTotalGb: (hasHardwareService ? serviceSnapshot.MemoryTotalGb : null) ?? memoryTotal,
                 TemperatureSensors: temperatureSensors,
-                Status: status);
+                Sensors: sensorCatalog,
+                Status: status)
+            {
+                OnePercentLowFps = frameSnapshot.OnePercentLowFps
+            };
         }
         catch (Exception ex)
         {
@@ -282,8 +360,8 @@ public sealed class TelemetryService : IDisposable
                         && ContainsAny($"{x.Hardware.Name} {x.Sensor.Name}", "cpu", "package", "socket", "tctl", "tdie", "ccd"))
             .ToArray();
 
-        return PickTemperature(cpuSensors, "package", "tctl", "tdie", "cpu", "core max", "core", "ccd")
-            ?? PickTemperature(motherboardCpuSensors, "package", "tctl", "tdie", "cpu", "socket", "ccd");
+        return PickCpuTemperature(cpuSensors)
+            ?? PickMotherboardCpuTemperature(motherboardCpuSensors);
     }
 
     private static TemperatureReading? FindGpuTemperature(IEnumerable<(IHardware Hardware, ISensor Sensor)> sensors)
@@ -295,7 +373,7 @@ public sealed class TelemetryService : IDisposable
                         && gpuTypes.Contains(x.Hardware.HardwareType))
             .ToArray();
 
-        return PickTemperature(gpuSensors, "gpu core", "hot spot", "junction", "edge", "memory", "gpu");
+        return PickGpuTemperature(gpuSensors);
     }
 
     private static TemperatureReading? FindDiskTemperature(IEnumerable<(IHardware Hardware, ISensor Sensor)> sensors)
@@ -355,35 +433,138 @@ public sealed class TelemetryService : IDisposable
         return name.Contains("temperature", StringComparison.OrdinalIgnoreCase) ? 3 : 100;
     }
 
-    private static TemperatureReading? PickTemperature(IEnumerable<(IHardware Hardware, ISensor Sensor)> sensors, params string[] priorities)
+    private static TemperatureReading? PickCpuTemperature(IEnumerable<(IHardware Hardware, ISensor Sensor)> sensors)
     {
-        var candidates = sensors
+        return PickScoredTemperature(
+            sensors,
+            CpuTemperatureScore,
+            "CPU 主温度");
+    }
+
+    private static TemperatureReading? PickMotherboardCpuTemperature(IEnumerable<(IHardware Hardware, ISensor Sensor)> sensors)
+    {
+        return PickScoredTemperature(
+            sensors,
+            MotherboardCpuTemperatureScore,
+            "主板 CPU 温度回退");
+    }
+
+    private static TemperatureReading? PickGpuTemperature(IEnumerable<(IHardware Hardware, ISensor Sensor)> sensors)
+    {
+        return PickScoredTemperature(
+            sensors,
+            GpuTemperatureScore,
+            "GPU 主温度");
+    }
+
+    private static TemperatureReading? PickScoredTemperature(
+        IEnumerable<(IHardware Hardware, ISensor Sensor)> sensors,
+        Func<(IHardware Hardware, ISensor Sensor), int> score,
+        string sourcePrefix)
+    {
+        var best = sensors
             .Where(IsPlausibleTemperature)
-            .ToArray();
-
-        foreach (var priority in priorities)
-        {
-            var match = candidates.FirstOrDefault(x =>
-                $"{x.Hardware.Name} {x.Sensor.Name}".Contains(priority, StringComparison.OrdinalIgnoreCase));
-            if (match.Sensor is not null)
+            .Select(x => new
             {
-                return ToTemperatureReading(match);
-            }
-        }
+                Sensor = x,
+                Score = score(x)
+            })
+            .Where(x => x.Score < 100)
+            .OrderBy(x => x.Score)
+            .ThenByDescending(x => x.Sensor.Sensor.Value)
+            .FirstOrDefault();
 
-        if (candidates.Length == 0)
+        return best is null
+            ? null
+            : ToTemperatureReading(best.Sensor, $"{sourcePrefix} / {TemperatureRole(best.Score)}");
+    }
+
+    private static int CpuTemperatureScore((IHardware Hardware, ISensor Sensor) sensor)
+    {
+        var name = sensor.Sensor.Name.Trim();
+        if (ContainsAny(name, "package", "cpu package"))
         {
-            return null;
+            return 0;
         }
 
-        if (candidates.Length == 1)
+        if (ContainsAny(name, "tctl/tdie", "tctl", "tdie"))
         {
-            return ToTemperatureReading(candidates[0]);
+            return 1;
         }
 
-        return new TemperatureReading(
-            candidates.Average(x => x.Sensor.Value!.Value),
-            $"平均 {candidates.Length} 个温度项");
+        if (ContainsAny(name, "core max", "max core", "cpu max"))
+        {
+            return 2;
+        }
+
+        if (ContainsAny(name, "ccd max", "ccd"))
+        {
+            return 3;
+        }
+
+        if (name.Equals("CPU", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("CPU Temperature", StringComparison.OrdinalIgnoreCase))
+        {
+            return 4;
+        }
+
+        return name.Contains("core", StringComparison.OrdinalIgnoreCase) ? 10 : 100;
+    }
+
+    private static int MotherboardCpuTemperatureScore((IHardware Hardware, ISensor Sensor) sensor)
+    {
+        var text = $"{sensor.Hardware.Name} {sensor.Sensor.Name}";
+        if (ContainsAny(text, "cpu package", "package", "tctl", "tdie"))
+        {
+            return 20;
+        }
+
+        if (ContainsAny(text, "cpu socket", "socket", "cpu"))
+        {
+            return 25;
+        }
+
+        return 100;
+    }
+
+    private static int GpuTemperatureScore((IHardware Hardware, ISensor Sensor) sensor)
+    {
+        var name = sensor.Sensor.Name.Trim();
+        if (ContainsAny(name, "gpu core", "core"))
+        {
+            return 0;
+        }
+
+        if (ContainsAny(name, "edge"))
+        {
+            return 1;
+        }
+
+        if (ContainsAny(name, "hot spot", "hotspot", "junction"))
+        {
+            return 10;
+        }
+
+        if (ContainsAny(name, "memory", "vram"))
+        {
+            return 30;
+        }
+
+        return name.Contains("temperature", StringComparison.OrdinalIgnoreCase) ? 50 : 100;
+    }
+
+    private static string TemperatureRole(int score)
+    {
+        return score switch
+        {
+            0 => "核心/封装",
+            1 => "核心/边缘",
+            <= 4 => "高可信",
+            10 => "热点/核心回退",
+            <= 25 => "主板回退",
+            30 => "显存回退",
+            _ => "传感器回退"
+        };
     }
 
     private static bool ContainsAny(string value, params string[] needles)
@@ -426,6 +607,121 @@ public sealed class TelemetryService : IDisposable
             .ToArray();
     }
 
+    private static IReadOnlyList<SensorReading> BuildSensorCatalog((IHardware Hardware, ISensor Sensor)[] sensors)
+    {
+        return sensors
+            .Where(x => IsSupportedSensorType(x.Sensor.SensorType))
+            .OrderBy(x => SensorTypePriority(x.Sensor.SensorType))
+            .ThenBy(x => HardwarePriority(x.Hardware.HardwareType))
+            .ThenBy(x => x.Hardware.Name)
+            .ThenBy(x => x.Sensor.Name)
+            .Select(ToSensorReading)
+            .ToArray();
+    }
+
+    private static SensorReading ToSensorReading((IHardware Hardware, ISensor Sensor) sensor)
+    {
+        var hardwareType = sensor.Hardware.HardwareType.ToString();
+        var sensorType = sensor.Sensor.SensorType.ToString();
+        return new SensorReading(
+            SensorReading.BuildId("local", sensor.Hardware.Name, hardwareType, sensor.Sensor.Name, sensorType),
+            sensor.Hardware.Name,
+            sensor.Sensor.Name,
+            hardwareType,
+            sensorType,
+            sensor.Sensor.Value,
+            SensorUnit(sensor.Sensor.SensorType));
+    }
+
+    private static IReadOnlyList<SensorReading> AddSyntheticSensors(
+        IReadOnlyList<SensorReading> hardwareSensors,
+        PresentMonFrameSnapshot frameSnapshot,
+        double? cpuLoad,
+        double? cpuTemperature,
+        double? gpuLoad,
+        double? gpuTemperature,
+        double? diskTemperature,
+        double? memoryLoad,
+        double? memoryUsedGb)
+    {
+        var sensors = new List<SensorReading>(hardwareSensors.Count + 8)
+        {
+            new("builtin/fps", "FPS 引擎", "FPS", "Frame", "FrameRate", frameSnapshot.FramesPerSecond, "FPS"),
+            new("builtin/one-percent-low-fps", "FPS 引擎", "1% Low", "Frame", "FrameRate", frameSnapshot.OnePercentLowFps, "FPS"),
+            new("builtin/frame-time", "FPS 引擎", "帧时间", "Frame", "Time", frameSnapshot.FrameTimeMs, "ms"),
+            new("builtin/cpu-load", "CPU", "CPU 占用", "Cpu", "Load", cpuLoad, "%"),
+            new("builtin/gpu-load", "GPU", "GPU 占用", "Gpu", "Load", gpuLoad, "%"),
+            new("builtin/memory-load", "内存", "内存占用", "Memory", "Load", memoryLoad, "%"),
+            new("builtin/memory-used", "内存", "已用内存", "Memory", "Data", memoryUsedGb, "GB"),
+            new("builtin/cpu-temperature", "CPU", "CPU 温度", "Cpu", "Temperature", cpuTemperature, "℃"),
+            new("builtin/gpu-temperature", "GPU", "GPU 温度", "Gpu", "Temperature", gpuTemperature, "℃"),
+            new("builtin/disk-temperature", "硬盘", "硬盘温度", "Storage", "Temperature", diskTemperature, "℃")
+        };
+
+        sensors.AddRange(hardwareSensors);
+        return sensors
+            .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToArray();
+    }
+
+    private static bool IsSupportedSensorType(SensorType sensorType)
+    {
+        return sensorType is SensorType.Temperature
+            or SensorType.Load
+            or SensorType.Power
+            or SensorType.Voltage
+            or SensorType.Fan
+            or SensorType.Clock
+            or SensorType.Data
+            or SensorType.SmallData;
+    }
+
+    private static int SensorTypePriority(SensorType sensorType)
+    {
+        return sensorType switch
+        {
+            SensorType.Temperature => 0,
+            SensorType.Load => 1,
+            SensorType.Power => 2,
+            SensorType.Voltage => 3,
+            SensorType.Fan => 4,
+            SensorType.Clock => 5,
+            SensorType.Data => 6,
+            SensorType.SmallData => 7,
+            _ => 100
+        };
+    }
+
+    private static int HardwarePriority(HardwareType hardwareType)
+    {
+        return hardwareType switch
+        {
+            HardwareType.Cpu => 0,
+            HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel => 1,
+            HardwareType.Memory => 2,
+            HardwareType.Storage => 3,
+            HardwareType.Motherboard => 4,
+            _ => 10
+        };
+    }
+
+    private static string SensorUnit(SensorType sensorType)
+    {
+        return sensorType switch
+        {
+            SensorType.Temperature => "℃",
+            SensorType.Load => "%",
+            SensorType.Power => "W",
+            SensorType.Voltage => "V",
+            SensorType.Fan => "RPM",
+            SensorType.Clock => "MHz",
+            SensorType.Data => "GB",
+            SensorType.SmallData => "MB",
+            _ => string.Empty
+        };
+    }
+
     private static int TemperaturePriority(IHardware hardware, ISensor sensor)
     {
         var text = $"{hardware.Name} {sensor.Name}";
@@ -457,15 +753,43 @@ public sealed class TelemetryService : IDisposable
         return 5;
     }
 
-    private static TemperatureReading ToTemperatureReading((IHardware Hardware, ISensor Sensor) sensor)
+    private static TemperatureReading ToTemperatureReading((IHardware Hardware, ISensor Sensor) sensor, string? prefix = null)
     {
-        return new TemperatureReading(sensor.Sensor.Value!.Value, $"{sensor.Hardware.Name} / {sensor.Sensor.Name}");
+        var source = $"{sensor.Hardware.Name} / {sensor.Sensor.Name}";
+        return new TemperatureReading(
+            sensor.Sensor.Value!.Value,
+            string.IsNullOrWhiteSpace(prefix) ? source : $"{prefix}：{source}");
+    }
+
+    private static TemperatureReading? ToTemperatureReading(double? value, string? source)
+    {
+        return value is null
+            ? null
+            : new TemperatureReading(value.Value, string.IsNullOrWhiteSpace(source) ? "后台温度服务" : source);
+    }
+
+    private static SensorReadingValue? ToSensorReadingValue(double? value, string? source)
+    {
+        return value is null
+            ? null
+            : new SensorReadingValue(value.Value, string.IsNullOrWhiteSpace(source) ? "后台温度服务" : source);
+    }
+
+    private static PresentMonFrameSnapshot ToFrameSnapshot(KuikuiTelemetrySnapshot snapshot)
+    {
+        return new PresentMonFrameSnapshot(
+            snapshot.FramesPerSecond,
+            snapshot.FrameTimeMs,
+            snapshot.Status)
+        {
+            OnePercentLowFps = snapshot.OnePercentLowFps
+        };
     }
 
     private string BuildStatus((IHardware Hardware, ISensor Sensor)[] sensors, TemperatureReading? cpuTemp, TemperatureReading? gpuTemp, string presentMonStatus)
     {
         var tempSensorCount = sensors.Count(x => x.Sensor.SensorType == SensorType.Temperature && x.Sensor.Value is not null);
-        var reliableTempCount = sensors.Count(IsPlausibleTemperature);
+        var reliableTempCount = sensors.Count(x => x.Sensor.SensorType == SensorType.Temperature && IsPlausibleTemperature(x));
         var tempStatus = cpuTemp is null && gpuTemp is null
             ? $"未读到可信温度（原始 {tempSensorCount} 项，可信 {reliableTempCount} 项；请确认已管理员运行）"
             : $"可信温度 {reliableTempCount}/{tempSensorCount} 项";
@@ -504,7 +828,7 @@ public sealed class TelemetryService : IDisposable
     private static double BytesToGb(ulong bytes) => bytes / 1024d / 1024d / 1024d;
 
     private static RealtimeSnapshot EmptySnapshot(string status) =>
-        new(DateTimeOffset.Now, null, null, null, null, null, null, null, null, null, null, null, null, null, null, Array.Empty<SensorReading>(), status);
+        new(DateTimeOffset.Now, null, null, null, null, null, null, null, null, null, null, null, null, null, null, Array.Empty<SensorReading>(), Array.Empty<SensorReading>(), status);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GlobalMemoryStatusEx([In, Out] MemoryStatusEx lpBuffer);

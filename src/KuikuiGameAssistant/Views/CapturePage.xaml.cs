@@ -183,5 +183,8 @@ public partial class CapturePage : System.Windows.Controls.UserControl
         }
     }
 
-    private sealed record SelectionOption(int Value, string Label);
+    private sealed record SelectionOption(int Value, string Label)
+    {
+        public override string ToString() => Label;
+    }
 }

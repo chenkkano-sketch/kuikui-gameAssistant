@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Collections.ObjectModel;
 using KuikuiGameAssistant.Models;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaColor = System.Windows.Media.Color;
@@ -15,10 +16,17 @@ public sealed class OverlaySettings : ObservableObject
     private double _backgroundOpacity = 0.9;
     private double _fontSize = 18;
     private double _labelFontSize = 11;
-    private double _horizontalWidth = 560;
+    private double _horizontalWidth = 660;
     private double _horizontalHeight = 58;
     private double _verticalWidth = 132;
-    private double _verticalHeight = 250;
+    private double _verticalHeight = 292;
+
+    public OverlaySettings()
+    {
+        ApplyMetricSettings(null);
+    }
+
+    public ObservableCollection<OverlayMetricConfig> Metrics { get; } = new();
 
     public OverlayLayoutMode LayoutMode
     {
@@ -111,7 +119,7 @@ public sealed class OverlaySettings : ObservableObject
         get => _horizontalWidth;
         set
         {
-            if (SetProperty(ref _horizontalWidth, Math.Clamp(value, 420, 760)))
+            if (SetProperty(ref _horizontalWidth, Math.Clamp(value, 480, 880)))
             {
                 NotifyLayoutProperties();
             }
@@ -147,7 +155,7 @@ public sealed class OverlaySettings : ObservableObject
         get => _verticalHeight;
         set
         {
-            if (SetProperty(ref _verticalHeight, Math.Clamp(value, 190, 360)))
+            if (SetProperty(ref _verticalHeight, Math.Clamp(value, 220, 440)))
             {
                 NotifyLayoutProperties();
             }
@@ -186,6 +194,33 @@ public sealed class OverlaySettings : ObservableObject
 
     public string PrimaryResolutionText => $"{(int)SystemParameters.PrimaryScreenWidth} x {(int)SystemParameters.PrimaryScreenHeight}";
 
+    public void ApplyMetricSettings(IEnumerable<OverlayMetricConfig>? metrics)
+    {
+        var persisted = metrics?
+            .GroupBy(x => x.Kind)
+            .ToDictionary(x => x.Key, x => x.OrderBy(item => item.Order).First());
+
+        Metrics.Clear();
+        foreach (var metric in CreateDefaultMetrics())
+        {
+            if (persisted is not null && persisted.TryGetValue(metric.Kind, out var saved))
+            {
+                metric.IsEnabled = saved.IsEnabled;
+                metric.Order = saved.Order;
+            }
+
+            Metrics.Add(metric);
+        }
+    }
+
+    public IReadOnlyList<OverlayMetricConfig> SnapshotMetrics()
+    {
+        return Metrics
+            .OrderBy(x => x.Order)
+            .Select(x => x.Clone())
+            .ToArray();
+    }
+
     public void Reset()
     {
         LayoutMode = OverlayLayoutMode.Horizontal;
@@ -195,10 +230,11 @@ public sealed class OverlaySettings : ObservableObject
         BackgroundOpacity = 0.9;
         FontSize = 18;
         LabelFontSize = 11;
-        HorizontalWidth = 560;
+        HorizontalWidth = 660;
         HorizontalHeight = 58;
         VerticalWidth = 132;
-        VerticalHeight = 250;
+        VerticalHeight = 292;
+        ApplyMetricSettings(null);
     }
 
     private void NotifyLayoutProperties()
@@ -208,5 +244,68 @@ public sealed class OverlaySettings : ObservableObject
         OnPropertyChanged(nameof(HorizontalSizeText));
         OnPropertyChanged(nameof(VerticalSizeText));
         OnPropertyChanged(nameof(CurrentSizeText));
+    }
+
+    private static IReadOnlyList<OverlayMetricConfig> CreateDefaultMetrics()
+    {
+        return
+        [
+            new()
+            {
+                Kind = OverlayMetricKind.FramesPerSecond,
+                Label = "FPS",
+                PreviewValue = "144",
+                Order = 0,
+                IsEnabled = true
+            },
+            new()
+            {
+                Kind = OverlayMetricKind.OnePercentLowFps,
+                Label = "1% LOW",
+                PreviewValue = "118",
+                Order = 1,
+                IsEnabled = true
+            },
+            new()
+            {
+                Kind = OverlayMetricKind.CpuLoad,
+                Label = "CPU",
+                PreviewValue = "36%",
+                Order = 2,
+                IsEnabled = true
+            },
+            new()
+            {
+                Kind = OverlayMetricKind.GpuLoad,
+                Label = "GPU",
+                PreviewValue = "82%",
+                Order = 3,
+                IsEnabled = true
+            },
+            new()
+            {
+                Kind = OverlayMetricKind.MemoryLoad,
+                Label = "MEM",
+                PreviewValue = "61%",
+                Order = 4,
+                IsEnabled = true
+            },
+            new()
+            {
+                Kind = OverlayMetricKind.CpuTemperature,
+                Label = "CPU ℃",
+                PreviewValue = "72℃",
+                Order = 5,
+                IsEnabled = true
+            },
+            new()
+            {
+                Kind = OverlayMetricKind.GpuTemperature,
+                Label = "GPU ℃",
+                PreviewValue = "68℃",
+                Order = 6,
+                IsEnabled = true
+            }
+        ];
     }
 }

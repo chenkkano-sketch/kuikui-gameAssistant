@@ -17,4 +17,8 @@ public sealed record RealtimeSnapshot(
     double? MemoryUsedGb,
     double? MemoryTotalGb,
     IReadOnlyList<SensorReading> TemperatureSensors,
-    string Status);
+    IReadOnlyList<SensorReading> Sensors,
+    string Status)
+{
+    public double? OnePercentLowFps { get; init; }
+}

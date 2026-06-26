@@ -38,6 +38,19 @@ public sealed class SettingsService
             AppSettings = document.App ?? new AppSettings();
             AppSettings.GameFilter ??= new GameFilterSettings();
             AppSettings.GameFilter.Presets ??= new System.Collections.ObjectModel.ObservableCollection<GameFilterPreset>();
+            AppSettings.MonitorModules ??= MonitorModuleConfig.CreateDefaults();
+            if (AppSettings.MonitorModules.Count == 0)
+            {
+                AppSettings.MonitorModules = MonitorModuleConfig.CreateDefaults();
+            }
+
+            if (!HasAppProperty(json, nameof(AppSettings.ThemeMode)))
+            {
+                AppSettings.ThemeMode = TryReadAppBool(json, nameof(AppSettings.UseDarkMode), out var legacyDarkMode) && legacyDarkMode
+                    ? AppThemeMode.Dark
+                    : AppThemeMode.System;
+            }
+
             if (!HasAppProperty(json, nameof(AppSettings.EnablePresentMon)))
             {
                 AppSettings.EnablePresentMon = true;
@@ -91,6 +104,18 @@ public sealed class SettingsService
         settings.HorizontalHeight = persisted.HorizontalHeight;
         settings.VerticalWidth = persisted.VerticalWidth;
         settings.VerticalHeight = persisted.VerticalHeight;
+        if (persisted.Metrics is null)
+        {
+            settings.HorizontalWidth = Math.Max(settings.HorizontalWidth, 660);
+            settings.VerticalHeight = Math.Max(settings.VerticalHeight, 292);
+        }
+
+        settings.ApplyMetricSettings(persisted.Metrics?.Select(x => new OverlayMetricConfig
+        {
+            Kind = x.Kind,
+            IsEnabled = x.IsEnabled,
+            Order = x.Order
+        }));
     }
 
     private static PersistedOverlaySettings FromOverlaySettings(OverlaySettings settings)
@@ -107,7 +132,15 @@ public sealed class SettingsService
             HorizontalWidth = settings.HorizontalWidth,
             HorizontalHeight = settings.HorizontalHeight,
             VerticalWidth = settings.VerticalWidth,
-            VerticalHeight = settings.VerticalHeight
+            VerticalHeight = settings.VerticalHeight,
+            Metrics = settings.SnapshotMetrics()
+                .Select(x => new PersistedOverlayMetric
+                {
+                    Kind = x.Kind,
+                    IsEnabled = x.IsEnabled,
+                    Order = x.Order
+                })
+                .ToArray()
         };
     }
 
@@ -144,6 +177,28 @@ public sealed class SettingsService
         }
     }
 
+    private static bool TryReadAppBool(string json, string propertyName, out bool value)
+    {
+        value = false;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (!document.RootElement.TryGetProperty("App", out var app)
+                || !app.TryGetProperty(propertyName, out var property)
+                || property.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
+            {
+                return false;
+            }
+
+            value = property.GetBoolean();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private sealed class PersistedSettings
     {
         public AppSettings? App { get; set; }
@@ -163,5 +218,13 @@ public sealed class SettingsService
         public double HorizontalHeight { get; set; }
         public double VerticalWidth { get; set; }
         public double VerticalHeight { get; set; }
+        public IReadOnlyList<PersistedOverlayMetric>? Metrics { get; set; }
+    }
+
+    private sealed class PersistedOverlayMetric
+    {
+        public OverlayMetricKind Kind { get; set; }
+        public bool IsEnabled { get; set; } = true;
+        public int Order { get; set; }
     }
 }

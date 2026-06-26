@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Media;
+using KuikuiGameAssistant.Services;
 
 namespace KuikuiGameAssistant.Controls;
 
@@ -19,10 +20,13 @@ public sealed class HistoryGraph : FrameworkElement
         DependencyProperty.Register(nameof(MemoryValues), typeof(IEnumerable), typeof(HistoryGraph),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnValuesChanged));
 
-    private static readonly System.Windows.Media.Pen GridPen = CreatePen("#E7ECF4", 1);
-    private static readonly System.Windows.Media.Pen CpuPen = CreatePen("#2563EB", 2);
-    private static readonly System.Windows.Media.Pen GpuPen = CreatePen("#7C3AED", 2);
-    private static readonly System.Windows.Media.Pen MemoryPen = CreatePen("#059669", 2);
+    private bool _isThemeSubscribed;
+
+    public HistoryGraph()
+    {
+        Loaded += HistoryGraph_Loaded;
+        Unloaded += HistoryGraph_Unloaded;
+    }
 
     public IEnumerable? CpuValues
     {
@@ -48,16 +52,20 @@ public sealed class HistoryGraph : FrameworkElement
 
         var rect = new Rect(0, 0, ActualWidth, ActualHeight);
         drawingContext.DrawRoundedRectangle(System.Windows.Media.Brushes.Transparent, null, rect, 8, 8);
+        var gridPen = CreatePen("GraphGridBrush", "#FFE5E5E5", 1);
+        var cpuPen = CreatePen("GraphCpuBrush", "#FF0067C0", 2);
+        var gpuPen = CreatePen("GraphGpuBrush", "#FF8E4EC6", 2);
+        var memoryPen = CreatePen("GraphMemoryBrush", "#FF0E7A0D", 2);
 
         for (var i = 1; i < 4; i++)
         {
             var y = rect.Height * i / 4;
-            drawingContext.DrawLine(GridPen, new System.Windows.Point(0, y), new System.Windows.Point(rect.Width, y));
+            drawingContext.DrawLine(gridPen, new System.Windows.Point(0, y), new System.Windows.Point(rect.Width, y));
         }
 
-        DrawSeries(drawingContext, rect, MemoryValues, MemoryPen);
-        DrawSeries(drawingContext, rect, GpuValues, GpuPen);
-        DrawSeries(drawingContext, rect, CpuValues, CpuPen);
+        DrawSeries(drawingContext, rect, MemoryValues, memoryPen);
+        DrawSeries(drawingContext, rect, GpuValues, gpuPen);
+        DrawSeries(drawingContext, rect, CpuValues, cpuPen);
     }
 
     private static void DrawSeries(DrawingContext context, Rect rect, IEnumerable? source, System.Windows.Media.Pen pen)
@@ -97,18 +105,31 @@ public sealed class HistoryGraph : FrameworkElement
         context.DrawGeometry(null, pen, geometry);
     }
 
-    private static System.Windows.Media.Pen CreatePen(string color, double thickness)
+    private static System.Windows.Media.Pen CreatePen(string resourceKey, string fallbackColor, double thickness)
     {
-        var brush = (SolidColorBrush)new BrushConverter().ConvertFromString(color)!;
-        brush.Freeze();
+        var brush = BrushFromResource(resourceKey, fallbackColor);
         var pen = new System.Windows.Media.Pen(brush, thickness)
         {
             StartLineCap = PenLineCap.Round,
             EndLineCap = PenLineCap.Round,
             LineJoin = PenLineJoin.Round
         };
-        pen.Freeze();
         return pen;
+    }
+
+    private static SolidColorBrush BrushFromResource(string resourceKey, string fallbackColor)
+    {
+        if (System.Windows.Application.Current?.Resources[resourceKey] is SolidColorBrush brush)
+        {
+            return brush;
+        }
+
+        if (System.Windows.Application.Current?.Resources[resourceKey] is System.Windows.Media.Color color)
+        {
+            return new SolidColorBrush(color);
+        }
+
+        return (SolidColorBrush)new BrushConverter().ConvertFromString(fallbackColor)!;
     }
 
     private static void OnValuesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -132,4 +153,37 @@ public sealed class HistoryGraph : FrameworkElement
     }
 
     private void CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => InvalidateVisual();
+
+    private void HistoryGraph_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_isThemeSubscribed)
+        {
+            return;
+        }
+
+        AppThemeService.ThemeApplied += AppThemeService_ThemeApplied;
+        _isThemeSubscribed = true;
+    }
+
+    private void HistoryGraph_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (!_isThemeSubscribed)
+        {
+            return;
+        }
+
+        AppThemeService.ThemeApplied -= AppThemeService_ThemeApplied;
+        _isThemeSubscribed = false;
+    }
+
+    private void AppThemeService_ThemeApplied(object? sender, EventArgs e)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            InvalidateVisual();
+            return;
+        }
+
+        _ = Dispatcher.BeginInvoke(InvalidateVisual);
+    }
 }

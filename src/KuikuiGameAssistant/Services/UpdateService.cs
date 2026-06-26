@@ -15,6 +15,8 @@ public sealed class UpdateService
     private const string GitHubApiBaseUrl = "https://api.github.com/repos/";
     private const string GitHubWebBaseUrl = "https://github.com/";
     private const string PackageBaseName = "KuikuiGameAssistant";
+    private const string StableInstallerAssetName = PackageBaseName + "-setup.exe";
+    private const string StablePortableAssetName = PackageBaseName + "-win-x64-portable.zip";
     private const string PortableMarkerFile = "portable.marker";
     private static readonly TimeSpan StartupCheckInterval = TimeSpan.FromHours(24);
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -33,6 +35,30 @@ public sealed class UpdateService
     public Version CurrentVersion => GetCurrentVersion();
 
     public bool IsPortableInstall => File.Exists(Path.Combine(AppContext.BaseDirectory, PortableMarkerFile));
+
+    public string RepositoryUrl => $"{GitHubWebBaseUrl}{RepositoryOrDefault}";
+
+    public string ReleaseListUrl => $"{RepositoryUrl}/releases";
+
+    public string LatestReleaseUrl => $"{ReleaseListUrl}/latest";
+
+    public string InstallerDirectDownloadUrl => BuildLatestDownloadUrl(RepositoryOrDefault, StableInstallerAssetName);
+
+    public string PortableDirectDownloadUrl => BuildLatestDownloadUrl(RepositoryOrDefault, StablePortableAssetName);
+
+    public string PreferredDirectDownloadUrl => IsPortableInstall ? PortableDirectDownloadUrl : InstallerDirectDownloadUrl;
+
+    public string CurrentInstallerDownloadUrl => BuildDownloadUrl(
+        RepositoryOrDefault,
+        $"v{CurrentVersion}",
+        $"{PackageBaseName}-{CurrentVersion}-setup.exe");
+
+    public string CurrentPortableDownloadUrl => BuildDownloadUrl(
+        RepositoryOrDefault,
+        $"v{CurrentVersion}",
+        $"{PackageBaseName}-{CurrentVersion}-win-x64-portable.zip");
+
+    private string RepositoryOrDefault => NormalizeRepository(_settings.GitHubRepository) ?? AppSettings.DefaultGitHubRepository;
 
     public bool ShouldCheckOnStartup()
     {
@@ -272,7 +298,9 @@ public sealed class UpdateService
         var candidates = new[]
         {
             new UpdateAssetCandidate($"{PackageBaseName}-{versionText}-setup.exe", UpdatePackageKind.Installer),
-            new UpdateAssetCandidate($"{PackageBaseName}-{versionText}-win-x64-portable.zip", UpdatePackageKind.PortableZip)
+            new UpdateAssetCandidate($"{PackageBaseName}-{versionText}-win-x64-portable.zip", UpdatePackageKind.PortableZip),
+            new UpdateAssetCandidate(StableInstallerAssetName, UpdatePackageKind.Installer),
+            new UpdateAssetCandidate(StablePortableAssetName, UpdatePackageKind.PortableZip)
         };
 
         var preferredKind = IsPortableInstall ? UpdatePackageKind.PortableZip : UpdatePackageKind.Installer;
@@ -316,6 +344,11 @@ public sealed class UpdateService
     private static string BuildDownloadUrl(string repository, string tagName, string assetName)
     {
         return $"{GitHubWebBaseUrl}{repository}/releases/download/{Uri.EscapeDataString(tagName)}/{Uri.EscapeDataString(assetName)}";
+    }
+
+    private static string BuildLatestDownloadUrl(string repository, string assetName)
+    {
+        return $"{GitHubWebBaseUrl}{repository}/releases/latest/download/{Uri.EscapeDataString(assetName)}";
     }
 
     private static string? ExtractTagName(Uri? uri)

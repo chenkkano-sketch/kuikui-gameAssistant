@@ -9,17 +9,17 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding StatusText}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                <TextBlock Text="{Binding StatusText}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
                            VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{Binding UpdatedText}" FontSize="13"
-                           Foreground="{StaticResource TextSecondaryBrush}" />
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
             </Grid>
 
             <Border Margin="0,12,12,0"
                     Padding="14"
                     CornerRadius="8"
-                    Background="{StaticResource AccentSoftBrush}"
-                    BorderBrush="{StaticResource AccentBrush}"
+                    Background="{DynamicResource AccentSoftBrush}"
+                    BorderBrush="{DynamicResource AccentBrush}"
                     BorderThickness="1"
                     Visibility="{Binding FpsAssistVisibility}">
                 <Grid>
@@ -31,17 +31,17 @@
                     <Border Width="38"
                             Height="38"
                             CornerRadius="8"
-                            Background="{StaticResource SurfaceBrush}">
+                            Background="{DynamicResource SurfaceBrush}">
                         <TextBlock Text="&#xE7C1;"
                                    Style="{StaticResource IconTextStyle}"
-                                   Foreground="{StaticResource AccentBrush}" />
+                                   Foreground="{DynamicResource AccentBrush}" />
                     </Border>
                     <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding FpsAssistTitle}" FontSize="14" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding FpsAssistText}"
                                    Margin="0,3,0,0"
                                    FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    TextWrapping="Wrap" />
                     </StackPanel>
                     <Button Grid.Column="2"
@@ -54,6 +54,42 @@
                 </Grid>
             </Border>
 
+            <Border Margin="0,12,12,0"
+                    Padding="12"
+                    Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="220" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="实时监控模块" FontSize="15" FontWeight="SemiBold" />
+                        <TextBlock Text="每张卡片都可以绑定一个传感器；新增、删除和切换会立即生效。"
+                                   Margin="0,3,0,0"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              ItemsSource="{Binding ModuleTemplates}"
+                              SelectedItem="{Binding SelectedModuleTemplate}"
+                              DisplayMemberPath="Title"
+                              Foreground="{DynamicResource TextPrimaryBrush}"
+                              Background="{DynamicResource InputBackgroundBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}"
+                              Height="34"
+                              Margin="12,0,8,0"
+                              VerticalAlignment="Center" />
+                    <Button Grid.Column="2"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Height="34"
+                            MinWidth="96"
+                            Click="AddModule_Click">
+                        <TextBlock Text="添加模块" />
+                    </Button>
+                </Grid>
+            </Border>
+
             <ItemsControl ItemsSource="{Binding Metrics}" Margin="0,14,0,0">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -62,19 +98,21 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Width="218" Height="132" Margin="0,0,12,12" Padding="16" Style="{StaticResource CardBorderStyle}">
+                        <Border Width="238" Height="168" Margin="0,0,12,12" Padding="14" Style="{StaticResource CardBorderStyle}">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Border Width="34" Height="34" CornerRadius="8" Background="{StaticResource SurfaceMutedBrush}">
+                                    <Border Width="34" Height="34" CornerRadius="8" Background="{DynamicResource SurfaceMutedBrush}">
                                         <TextBlock Text="{Binding Icon}"
                                                    FontFamily="{StaticResource IconFont}"
                                                    Foreground="{Binding AccentBrush}"
@@ -83,15 +121,41 @@
                                                    VerticalAlignment="Center" />
                                     </Border>
                                     <TextBlock Grid.Column="1" Text="{Binding Title}" Margin="10,0,0,0" FontSize="13"
-                                               Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                               Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <Button Grid.Column="2"
+                                            Width="26"
+                                            Height="26"
+                                            MinWidth="0"
+                                            Padding="0"
+                                            Tag="{Binding Id}"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Click="RemoveModule_Click"
+                                            ToolTip="移除此模块">
+                                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10" />
+                                    </Button>
                                 </Grid>
                                 <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding ValueText}" FontSize="31" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding Unit}" Margin="7,11,0,0" FontSize="13"
-                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
                                 </StackPanel>
                                 <TextBlock Grid.Row="2" Text="{Binding Subtitle}" FontSize="12"
-                                           Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                           Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                <ComboBox Grid.Row="3"
+                                          ItemsSource="{Binding SensorOptions}"
+                                          SelectedValue="{Binding SelectedSensorId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          SelectedValuePath="Id"
+                                          DisplayMemberPath="DisplayName"
+                                          Foreground="{DynamicResource TextPrimaryBrush}"
+                                          Background="{DynamicResource InputBackgroundBrush}"
+                                          BorderBrush="{DynamicResource BorderBrush}"
+                                          IsEnabled="{Binding CanSelectSensor}"
+                                          Height="30"
+                                          Margin="0,8,0,0"
+                                          FontSize="12"
+                                          DropDownClosed="SensorCombo_DropDownClosed"
+                                          SelectionChanged="SensorCombo_SelectionChanged" />
                             </Grid>
                         </Border>
                     </DataTemplate>
@@ -114,16 +178,16 @@
                             <TextBlock Text="60 秒负载曲线" FontSize="16" FontWeight="SemiBold" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
-                                    <Ellipse Width="8" Height="8" Fill="#FF2563EB" VerticalAlignment="Center" />
-                                    <TextBlock Text="CPU" Margin="6,0,0,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource GraphCpuBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="CPU" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
-                                    <Ellipse Width="8" Height="8" Fill="#FF7C3AED" VerticalAlignment="Center" />
-                                    <TextBlock Text="GPU" Margin="6,0,0,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource GraphGpuBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="GPU" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Fill="#FF059669" VerticalAlignment="Center" />
-                                    <TextBlock Text="内存" Margin="6,0,0,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource GraphMemoryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="内存" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
                                 </StackPanel>
                             </StackPanel>
                         </Grid>
@@ -148,14 +212,14 @@
                                    Text="{Binding TemperatureDiagnosticText}"
                                    Margin="0,8,0,10"
                                    FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    TextWrapping="Wrap" />
 
                         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding TemperatureSensors}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Padding="9,7" Margin="0,0,0,6" Background="{StaticResource SurfaceMutedBrush}" CornerRadius="7">
+                                        <Border Padding="9,7" Margin="0,0,0,6" Background="{DynamicResource SurfaceMutedBrush}" CornerRadius="7">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
@@ -163,15 +227,15 @@
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel>
                                                     <StackPanel Orientation="Horizontal">
-                                                        <Border Background="#FFEAF1FF" CornerRadius="5" Padding="5,2" Margin="0,0,6,0">
-                                                            <TextBlock Text="{Binding HardwareType}" FontSize="10" Foreground="{StaticResource AccentBrush}" />
+                                                        <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="5" Padding="5,2" Margin="0,0,6,0">
+                                                            <TextBlock Text="{Binding HardwareType}" FontSize="10" Foreground="{DynamicResource AccentBrush}" />
                                                         </Border>
                                                         <TextBlock Text="{Binding SensorName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                                     </StackPanel>
                                                     <TextBlock Text="{Binding HardwareName}"
                                                                Margin="0,4,0,0"
                                                                FontSize="11"
-                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"
                                                                TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="1"

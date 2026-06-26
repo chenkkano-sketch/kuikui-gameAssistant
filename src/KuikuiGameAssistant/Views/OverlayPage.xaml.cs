@@ -33,6 +33,7 @@ public partial class OverlayPage : System.Windows.Controls.UserControl
         if (IsLoaded)
         {
             _settings.LayoutMode = OverlayLayoutMode.Horizontal;
+            SaveSettings();
         }
     }
 
@@ -41,28 +42,41 @@ public partial class OverlayPage : System.Windows.Controls.UserControl
         if (IsLoaded)
         {
             _settings.LayoutMode = OverlayLayoutMode.Vertical;
+            SaveSettings();
+        }
+    }
+
+    private void MetricToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (IsLoaded)
+        {
+            SaveSettings();
         }
     }
 
     private void BackgroundSwatch_Click(object sender, RoutedEventArgs e)
     {
         _settings.BackgroundColor = ColorFromTag(sender);
+        SaveSettings();
     }
 
     private void FontSwatch_Click(object sender, RoutedEventArgs e)
     {
         _settings.FontColor = ColorFromTag(sender);
+        SaveSettings();
     }
 
     private void LabelSwatch_Click(object sender, RoutedEventArgs e)
     {
         _settings.LabelColor = ColorFromTag(sender);
+        SaveSettings();
     }
 
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
         _settings.Reset();
         ApplyLayoutState();
+        SaveSettings();
     }
 
     private void ApplyLayoutState()
@@ -82,5 +96,10 @@ public partial class OverlayPage : System.Windows.Controls.UserControl
         }
 
         return System.Windows.Media.Colors.White;
+    }
+
+    private static void SaveSettings()
+    {
+        App.Settings.Save(App.OverlaySettings);
     }
 }

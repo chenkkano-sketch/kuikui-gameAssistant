@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using KuikuiGameAssistant.Models;
 using KuikuiGameAssistant.Services;
 using KuikuiGameAssistant.ViewModels;
@@ -10,12 +11,13 @@ namespace KuikuiGameAssistant.Views;
 public partial class DashboardPage : System.Windows.Controls.UserControl
 {
     private readonly TelemetryService _telemetry;
-    private readonly DashboardViewModel _viewModel = new();
+    private readonly DashboardViewModel _viewModel;
 
     public DashboardPage(TelemetryService telemetry)
     {
         InitializeComponent();
         _telemetry = telemetry;
+        _viewModel = new DashboardViewModel(App.Settings.AppSettings);
         DataContext = _viewModel;
 
         _telemetry.SnapshotUpdated += Telemetry_SnapshotUpdated;
@@ -23,6 +25,63 @@ public partial class DashboardPage : System.Windows.Controls.UserControl
     }
 
     public void RefreshNow() => _telemetry.RefreshNow();
+
+    private void AddModule_Click(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (_viewModel.AddSelectedModule())
+        {
+            App.Settings.Save(App.OverlaySettings);
+            _telemetry.RefreshNow();
+        }
+    }
+
+    private void RemoveModule_Click(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: string moduleId })
+        {
+            return;
+        }
+
+        if (_viewModel.RemoveModule(moduleId))
+        {
+            App.Settings.Save(App.OverlaySettings);
+        }
+    }
+
+    private void SensorCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded
+            || sender is not System.Windows.Controls.ComboBox comboBox
+            || !comboBox.IsKeyboardFocusWithin)
+        {
+            return;
+        }
+
+        SaveSensorSelection(comboBox);
+    }
+
+    private void SensorCombo_DropDownClosed(object sender, EventArgs e)
+    {
+        if (!IsLoaded
+            || sender is not System.Windows.Controls.ComboBox comboBox
+            || !comboBox.IsKeyboardFocusWithin)
+        {
+            return;
+        }
+
+        SaveSensorSelection(comboBox);
+    }
+
+    private static void SaveSensorSelection(System.Windows.Controls.ComboBox comboBox)
+    {
+        if (comboBox.SelectedValue is null)
+        {
+            return;
+        }
+
+        comboBox.GetBindingExpression(Selector.SelectedValueProperty)?.UpdateSource();
+        App.Settings.Save(App.OverlaySettings);
+    }
 
     private void FpsAssist_Click(object sender, System.Windows.RoutedEventArgs e)
     {
@@ -37,6 +96,14 @@ public partial class DashboardPage : System.Windows.Controls.UserControl
                 break;
             case DashboardFpsAction.RestartAsAdmin:
                 RestartAsAdmin();
+                break;
+            case DashboardFpsAction.RepairTelemetryService:
+                TelemetryEngineServiceInstaller.InstallOrRepairWithUi();
+                _telemetry.RestartPresentMon();
+                break;
+            case DashboardFpsAction.RepairTemperatureEngine:
+                TemperatureEngineInstaller.InstallOrRepairWithUi();
+                _telemetry.RestartPresentMon();
                 break;
             case DashboardFpsAction.SelectPresentMonPath:
                 SelectPresentMonPath();

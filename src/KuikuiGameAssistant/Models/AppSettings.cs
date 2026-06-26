@@ -11,7 +11,7 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
     private bool _openScreenshotFolder = true;
     private bool _enablePresentMon = true;
     private bool _memoryOptimizedDefaultsApplied;
-    private bool _useDarkMode;
+    private AppThemeMode _themeMode = AppThemeMode.System;
     private bool _recordHdr;
     private bool _recordSystemAudio;
     private bool _recordMicrophone;
@@ -84,10 +84,17 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
         set => SetProperty(ref _memoryOptimizedDefaultsApplied, value);
     }
 
+    public AppThemeMode ThemeMode
+    {
+        get => _themeMode;
+        set => SetProperty(ref _themeMode, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
     public bool UseDarkMode
     {
-        get => _useDarkMode;
-        set => SetProperty(ref _useDarkMode, value);
+        get => ThemeMode == AppThemeMode.Dark;
+        set => ThemeMode = value ? AppThemeMode.Dark : AppThemeMode.Light;
     }
 
     public int RecordingFrameRate
@@ -181,6 +188,8 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
     }
 
     public GameFilterSettings GameFilter { get; set; } = new();
+
+    public System.Collections.ObjectModel.ObservableCollection<MonitorModuleConfig> MonitorModules { get; set; } = MonitorModuleConfig.CreateDefaults();
 
     private static int NearestSupported(int value, params int[] supportedValues)
     {

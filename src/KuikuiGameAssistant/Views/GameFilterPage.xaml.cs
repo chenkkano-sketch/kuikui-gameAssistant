@@ -11,21 +11,15 @@ namespace KuikuiGameAssistant.Views;
 
 public partial class GameFilterPage : WpfUserControl
 {
-    private readonly AppSettings _appSettings;
     private readonly GameFilterSettings _settings;
     private readonly GameFilterService _filterService;
-    private bool _applyingTheme;
 
     public GameFilterPage(AppSettings appSettings, GameFilterService filterService)
     {
         InitializeComponent();
-        _appSettings = appSettings;
         _settings = appSettings.GameFilter;
         _filterService = filterService;
         DataContext = _settings;
-        _applyingTheme = true;
-        DarkModeCheckBox.IsChecked = appSettings.UseDarkMode;
-        _applyingTheme = false;
 
         _settings.PropertyChanged += Settings_PropertyChanged;
         _settings.Presets.CollectionChanged += Presets_CollectionChanged;
@@ -84,20 +78,6 @@ public partial class GameFilterPage : WpfUserControl
     private void Reset_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         _settings.Reset();
-    }
-
-    private void DarkModeCheckBox_Changed(object sender, System.Windows.RoutedEventArgs e)
-    {
-        if (_applyingTheme)
-        {
-            return;
-        }
-
-        _applyingTheme = true;
-        _appSettings.UseDarkMode = DarkModeCheckBox.IsChecked == true;
-        AppThemeService.Apply(_appSettings.UseDarkMode);
-        SaveSettings();
-        _applyingTheme = false;
     }
 
     private void ApplyFilter()

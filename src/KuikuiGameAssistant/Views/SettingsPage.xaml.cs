@@ -14,7 +14,6 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 {
     private readonly Dictionary<WpfTextBox, string> _hotkeyOriginalTexts = new();
     private readonly UpdateService _updateService;
-    private const string RepositoryUrl = "https://github.com/chenkkano-sketch/kuikui-gameAssistant";
     private const string BlogUrl = "https://www.kkano.cc";
     private const string TavernUrl = "https://www.kkano.cc/#/tavern";
 
@@ -22,8 +21,9 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     {
         InitializeComponent();
         _updateService = updateService;
+        ThemeModeComboBox.ItemsSource = ThemeModeOption.All;
         DataContext = settings;
-        UpdateStatusText.Text = $"当前版本 {_updateService.CurrentVersion}，使用 GitHub Releases 自动更新。";
+        UpdateStatusText.Text = $"当前版本 {_updateService.CurrentVersion}。GitHub API 受限时可复制固定直链手动下载。";
     }
 
     private async void CheckUpdate_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -34,7 +34,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         try
         {
             var result = await _updateService.CheckForUpdatesAsync();
-            UpdateStatusText.Text = result.Message;
+            UpdateStatusText.Text = BuildUpdateStatusText(result.Message, result.Release?.Asset.DownloadUrl);
             if (!result.UpdateAvailable || result.Release is null)
             {
                 return;
@@ -43,7 +43,7 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             var asset = result.Release.Asset;
             var answer = System.Windows.MessageBox.Show(
                 System.Windows.Window.GetWindow(this),
-                $"{result.Message}\n\n包类型：{FormatPackageKind(asset.Kind)}\n文件：{asset.Name}\n大小：{FormatSize(asset.SizeBytes)}\n\n是否现在下载并更新？",
+                $"{result.Message}\n\n包类型：{FormatPackageKind(asset.Kind)}\n文件：{asset.Name}\n大小：{FormatSize(asset.SizeBytes)}\n下载链接：{asset.DownloadUrl}\n\n是否现在下载并更新？",
                 "发现新版本",
                 System.Windows.MessageBoxButton.YesNo,
                 System.Windows.MessageBoxImage.Information);
@@ -125,7 +125,23 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         }
     }
 
-    private void OpenRepository_Click(object sender, System.Windows.RoutedEventArgs e) => OpenUrl(RepositoryUrl);
+    private void OpenRepository_Click(object sender, System.Windows.RoutedEventArgs e) => OpenUrl(_updateService.RepositoryUrl);
+
+    private void OpenLatestRelease_Click(object sender, System.Windows.RoutedEventArgs e) => OpenUrl(_updateService.LatestReleaseUrl);
+
+    private void CopyDownloadLink_Click(object sender, System.Windows.RoutedEventArgs e)
+    {
+        try
+        {
+            var links = BuildManualDownloadText();
+            System.Windows.Clipboard.SetText(links);
+            UpdateStatusText.Text = $"已复制下载入口：\n{links}";
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusText.Text = $"复制下载链接失败：{ex.Message}\n\n{BuildManualDownloadText()}";
+        }
+    }
 
     private void OpenBlog_Click(object sender, System.Windows.RoutedEventArgs e) => OpenUrl(BlogUrl);
 
@@ -149,6 +165,19 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Warning);
         }
+    }
+
+    private string BuildUpdateStatusText(string message, string? downloadUrl = null)
+    {
+        var text = string.IsNullOrWhiteSpace(downloadUrl)
+            ? message
+            : $"{message}\n下载链接：{downloadUrl}";
+        return $"{text}\n\n{BuildManualDownloadText()}";
+    }
+
+    private string BuildManualDownloadText()
+    {
+        return $"最新 Release：{_updateService.LatestReleaseUrl}\n固定安装版直链：{_updateService.InstallerDirectDownloadUrl}\n固定便携版直链：{_updateService.PortableDirectDownloadUrl}\n当前版本安装版：{_updateService.CurrentInstallerDownloadUrl}\n当前版本便携版：{_updateService.CurrentPortableDownloadUrl}";
     }
 
     private void BrowseScreenshotFolder_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -362,5 +391,17 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             Key.Pause => "Pause",
             _ => null
         };
+    }
+
+    private sealed record ThemeModeOption(AppThemeMode Mode, string Title)
+    {
+        public static IReadOnlyList<ThemeModeOption> All { get; } =
+        [
+            new(AppThemeMode.System, "跟随系统"),
+            new(AppThemeMode.Light, "浅色模式"),
+            new(AppThemeMode.Dark, "深色模式")
+        ];
+
+        public override string ToString() => Title;
     }
 }

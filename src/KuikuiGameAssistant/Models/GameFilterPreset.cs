@@ -31,4 +31,6 @@ public sealed class GameFilterPreset
             VignetteFeather = settings.VignetteFeather
         };
     }
+
+    public override string ToString() => Name;
 }

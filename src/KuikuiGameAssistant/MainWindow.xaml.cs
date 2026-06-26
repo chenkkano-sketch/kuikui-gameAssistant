@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Runtime.InteropServices;
 using KuikuiGameAssistant.Models;
 using KuikuiGameAssistant.Services;
 using KuikuiGameAssistant.Views;
@@ -12,6 +14,8 @@ namespace KuikuiGameAssistant;
 
 public partial class MainWindow : Window
 {
+    private const double NormalWindowCornerRadius = 10;
+    private const int DwmWindowCornerPreferenceAttribute = 33;
     private readonly DashboardPage _dashboardPage;
     private readonly HardwarePage _hardwarePage;
     private readonly CapturePage _capturePage;
@@ -23,6 +27,7 @@ public partial class MainWindow : Window
     private Drawing.Icon? _trayIcon;
     private OverlayWindow? _overlayWindow;
     private bool _screenshotSelectionOpen;
+    private string _currentPage = "Dashboard";
 
     public MainWindow()
     {
@@ -35,13 +40,19 @@ public partial class MainWindow : Window
         _filterPage = new GameFilterPage(App.Settings.AppSettings, App.GameFilters);
         _settingsPage = new SettingsPage(App.Settings.AppSettings, App.Updates);
         App.Settings.AppSettings.PropertyChanged += AppSettings_PropertyChanged;
+        AppThemeService.ThemeApplied += AppThemeService_ThemeApplied;
+        StateChanged += MainWindow_StateChanged;
 
         Navigate("Dashboard");
+        UpdateWindowFrameShape();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
+        ApplyNativeWindowCorners();
+        UpdateWindowFrameShape();
+
         try
         {
             _hotkeys.Attach(this);
@@ -82,7 +93,61 @@ public partial class MainWindow : Window
         _notifyIcon?.Dispose();
         _trayIcon?.Dispose();
         App.Settings.AppSettings.PropertyChanged -= AppSettings_PropertyChanged;
+        AppThemeService.ThemeApplied -= AppThemeService_ThemeApplied;
+        StateChanged -= MainWindow_StateChanged;
         base.OnClosed(e);
+    }
+
+    private void MainWindow_StateChanged(object? sender, EventArgs e)
+    {
+        UpdateWindowFrameShape();
+        ApplyNativeWindowCorners();
+    }
+
+    private void UpdateWindowFrameShape()
+    {
+        var maximized = WindowState == WindowState.Maximized;
+        var radius = maximized ? 0 : NormalWindowCornerRadius;
+        WindowFrameBorder.CornerRadius = new CornerRadius(radius);
+        WindowFrameBorder.BorderThickness = maximized ? new Thickness(0) : new Thickness(1);
+
+        var chrome = System.Windows.Shell.WindowChrome.GetWindowChrome(this);
+        if (chrome is not null)
+        {
+            chrome.CornerRadius = new CornerRadius(radius);
+        }
+    }
+
+    private void ApplyNativeWindowCorners()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        {
+            return;
+        }
+
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero)
+            {
+                return;
+            }
+
+            var preference = (int)(WindowState == WindowState.Maximized
+                ? DwmWindowCornerPreference.DoNotRound
+                : DwmWindowCornerPreference.Round);
+            _ = DwmSetWindowAttribute(
+                hwnd,
+                DwmWindowCornerPreferenceAttribute,
+                ref preference,
+                Marshal.SizeOf<int>());
+        }
+        catch (DllNotFoundException)
+        {
+        }
+        catch (EntryPointNotFoundException)
+        {
+        }
     }
 
     private void Navigate(string page)
@@ -92,6 +157,7 @@ public partial class MainWindow : Window
         switch (page)
         {
             case "Hardware":
+                _currentPage = "Hardware";
                 PageHost.Content = _hardwarePage;
                 PageTitle.Text = "硬件信息";
                 PageSubtitle.Text = "处理器、显卡、主板、硬盘、显示器和内存";
@@ -99,30 +165,35 @@ public partial class MainWindow : Window
                 _hardwarePage.Refresh();
                 break;
             case "Capture":
+                _currentPage = "Capture";
                 PageHost.Content = _capturePage;
                 PageTitle.Text = "截图录屏";
                 PageSubtitle.Text = "区域截图、MP4 录屏、画质和音频开关";
                 MarkSelected(CaptureNav);
                 break;
             case "Overlay":
+                _currentPage = "Overlay";
                 PageHost.Content = _overlayPage;
                 PageTitle.Text = "悬浮窗";
                 PageSubtitle.Text = "透明度、颜色、布局和尺寸可视化调节";
                 MarkSelected(OverlayNav);
                 break;
             case "Settings":
+                _currentPage = "Settings";
                 PageHost.Content = _settingsPage;
                 PageTitle.Text = "设置";
                 PageSubtitle.Text = "热键、启动项、文件保存位置和采集组件";
                 MarkSelected(SettingsNav);
                 break;
             case "Filter":
+                _currentPage = "Filter";
                 PageHost.Content = _filterPage;
                 PageTitle.Text = "游戏滤镜";
                 PageSubtitle.Text = "色彩、亮度、暗角和沉浸预设";
                 MarkSelected(FilterNav);
                 break;
             default:
+                _currentPage = "Dashboard";
                 PageHost.Content = _dashboardPage;
                 PageTitle.Text = "实时监控";
                 PageSubtitle.Text = "帧率、负载、温度和内存状态";
@@ -135,15 +206,40 @@ public partial class MainWindow : Window
     {
         foreach (var button in new[] { DashboardNav, HardwareNav, CaptureNav, OverlayNav, FilterNav, SettingsNav })
         {
-            button.Background = System.Windows.Media.Brushes.Transparent;
+            button.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
             button.FontWeight = FontWeights.Normal;
         }
     }
 
     private static void MarkSelected(System.Windows.Controls.Button button)
     {
-        button.Background = (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["AccentSoftBrush"];
+        button.SetResourceReference(System.Windows.Controls.Control.BackgroundProperty, "AccentSoftBrush");
         button.FontWeight = FontWeights.SemiBold;
+    }
+
+    private void ApplySelectedNavState()
+    {
+        ResetNavButtons();
+        MarkSelected(_currentPage switch
+        {
+            "Hardware" => HardwareNav,
+            "Capture" => CaptureNav,
+            "Overlay" => OverlayNav,
+            "Settings" => SettingsNav,
+            "Filter" => FilterNav,
+            _ => DashboardNav
+        });
+    }
+
+    private void AppThemeService_ThemeApplied(object? sender, EventArgs e)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            ApplySelectedNavState();
+            return;
+        }
+
+        _ = Dispatcher.BeginInvoke(ApplySelectedNavState);
     }
 
     private void Nav_Click(object sender, RoutedEventArgs e)
@@ -284,9 +380,9 @@ public partial class MainWindow : Window
             StartupService.SetEnabled(App.Settings.AppSettings.StartWithWindows);
         }
 
-        if (e.PropertyName == nameof(AppSettings.UseDarkMode))
+        if (e.PropertyName == nameof(AppSettings.ThemeMode))
         {
-            AppThemeService.Apply(App.Settings.AppSettings.UseDarkMode);
+            AppThemeService.Apply(App.Settings.AppSettings.ThemeMode);
         }
 
         App.Settings.Save(App.OverlaySettings);
@@ -362,7 +458,39 @@ public partial class MainWindow : Window
             return;
         }
 
-        DragMove();
+        if (WindowState == WindowState.Maximized)
+        {
+            RestoreFromMaximizedDrag(e);
+        }
+
+        try
+        {
+            DragMove();
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
+    private void RestoreFromMaximizedDrag(MouseButtonEventArgs e)
+    {
+        var mouseInWindow = e.GetPosition(this);
+        var mouseInTitleBar = e.GetPosition(TitleBar);
+        var mouseOnScreen = PointToScreen(mouseInWindow);
+        var source = PresentationSource.FromVisual(this);
+        if (source?.CompositionTarget is not null)
+        {
+            mouseOnScreen = source.CompositionTarget.TransformFromDevice.Transform(mouseOnScreen);
+        }
+
+        var restoredWidth = RestoreBounds.Width > 0 ? RestoreBounds.Width : Width;
+        var xRatio = ActualWidth > 0 ? Math.Clamp(mouseInWindow.X / ActualWidth, 0, 1) : 0.5;
+        var titleHeight = TitleBar.ActualHeight > 0 ? TitleBar.ActualHeight : 42;
+        var yOffset = Math.Clamp(mouseInTitleBar.Y, 8, Math.Max(8, titleHeight - 8));
+
+        WindowState = WindowState.Normal;
+        Left = mouseOnScreen.X - restoredWidth * xRatio;
+        Top = mouseOnScreen.Y - yOffset;
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
@@ -383,5 +511,20 @@ public partial class MainWindow : Window
     private void ToggleMaximize()
     {
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(
+        IntPtr hwnd,
+        int dwAttribute,
+        ref int pvAttribute,
+        int cbAttribute);
+
+    private enum DwmWindowCornerPreference
+    {
+        Default = 0,
+        DoNotRound = 1,
+        Round = 2,
+        RoundSmall = 3
     }
 }

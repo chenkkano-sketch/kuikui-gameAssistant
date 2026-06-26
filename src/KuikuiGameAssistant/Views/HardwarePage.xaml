@@ -12,8 +12,8 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Border HorizontalAlignment="Left" Background="{StaticResource SurfaceMutedBrush}" CornerRadius="8" Padding="8,4">
-                <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+            <Border HorizontalAlignment="Left" Background="{DynamicResource SurfaceMutedBrush}" CornerRadius="8" Padding="8,4">
+                <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                            VerticalAlignment="Center" />
             </Border>
             <ProgressBar Grid.Column="1" Width="130" Height="4" IsIndeterminate="{Binding IsLoading}" />
@@ -28,16 +28,16 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Width="414" MinHeight="138" Margin="0,0,10,10" Padding="14" Style="{StaticResource CardBorderStyle}">
+                        <Border Width="456" MinHeight="150" Margin="0,0,10,10" Padding="15" Style="{StaticResource CardBorderStyle}">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
                                 <StackPanel Orientation="Horizontal">
-                                    <Border Width="28" Height="28" CornerRadius="7" Background="{StaticResource AccentSoftBrush}">
+                                    <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource AccentSoftBrush}">
                                         <TextBlock Text="{Binding Icon}" FontFamily="{StaticResource IconFont}"
-                                                   Foreground="{StaticResource AccentBrush}"
+                                                   Foreground="{DynamicResource AccentBrush}"
                                                    FontSize="13"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
@@ -50,13 +50,13 @@
                                         <DataTemplate>
                                             <Grid Margin="0,0,0,5">
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="76" />
+                                                    <ColumnDefinition Width="92" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Name}" FontSize="12"
-                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                           Foreground="{DynamicResource TextSecondaryBrush}" />
                                                 <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12"
-                                                           LineHeight="16"
+                                                           LineHeight="17"
                                                            TextWrapping="Wrap" />
                                             </Grid>
                                         </DataTemplate>

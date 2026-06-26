@@ -11,19 +11,24 @@
 
 ## 下载
 
-当前正式版本：`v1.0.1`
+当前正式版本：`v1.0.2`
 
 前往 [GitHub Releases](https://github.com/chenkkano-sketch/kuikui-gameAssistant/releases/latest) 下载：
 
-- 安装版：`KuikuiGameAssistant-1.0.1-setup.exe`
-- 便携版：`KuikuiGameAssistant-1.0.1-win-x64-portable.zip`
+- 安装版：`KuikuiGameAssistant-1.0.2-setup.exe`
+- 便携版：`KuikuiGameAssistant-1.0.2-win-x64-portable.zip`
+
+固定直链：
+
+- 最新安装版：https://github.com/chenkkano-sketch/kuikui-gameAssistant/releases/latest/download/KuikuiGameAssistant-setup.exe
+- 最新便携版：https://github.com/chenkkano-sketch/kuikui-gameAssistant/releases/latest/download/KuikuiGameAssistant-win-x64-portable.zip
 
 安装版适合长期使用，会安装到系统程序目录。便携版适合解压即用，可以放进移动硬盘或工具箱目录。
 
 ## 亮点
 
 - 实时监控：CPU / GPU 负载、温度、内存占用和历史曲线。
-- FPS 采集：内置 PresentMon 支持，实时监控页可快速启用、重启或管理员重启。
+- FPS 采集：自带 KuikuiTelemetryService 后台引擎，安装后自动以服务方式采集游戏帧率。
 - 游戏悬浮窗：透明置顶、可拖动、可调颜色、布局、字号和尺寸。
 - 区域截图：拖拽选区、标注、取色、放大镜、快捷复制到剪切板。
 - MP4 录屏：基于 ScreenRecorderLib，支持 30 / 60 / 120 FPS、码率、系统声音、麦克风和鼠标指针。
@@ -61,6 +66,7 @@ chenkkano-sketch/kuikui-gameAssistant
 - 便携版优先下载 `portable.zip`。
 - 设置页可以关闭自动检查，也可以手动检查更新。
 - GitHub API 被限流时，会切换到 Releases 网页跳转线路继续判断最新版本。
+- 设置页提供最新 Release 和固定下载直链，API 受限时可以直接复制给用户手动下载。
 
 ## 从源码运行
 
@@ -83,19 +89,21 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 生成安装版和便携版：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.1
+.\scripts\package.ps1 -Version 1.0.2
 ```
 
 只生成便携 zip：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.1 -SkipInstaller
+.\scripts\package.ps1 -Version 1.0.2 -SkipInstaller
 ```
 
 输出文件：
 
-- `artifacts\KuikuiGameAssistant-1.0.1-setup.exe`
-- `artifacts\KuikuiGameAssistant-1.0.1-win-x64-portable.zip`
+- `artifacts\KuikuiGameAssistant-1.0.2-setup.exe`
+- `artifacts\KuikuiGameAssistant-1.0.2-win-x64-portable.zip`
+- `artifacts\KuikuiGameAssistant-setup.exe`
+- `artifacts\KuikuiGameAssistant-win-x64-portable.zip`
 
 安装版依赖 Inno Setup 6。GitHub Actions 会自动安装 Inno Setup 并完成发布构建。
 
@@ -104,18 +112,19 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 推送 tag 即可触发正式发布：
 
 ```powershell
-git tag v1.0.1
+git tag v1.0.2
 git push origin main
-git push origin v1.0.1
+git push origin v1.0.2
 ```
 
-GitHub Actions 会构建并上传两个下载包。Release 内容会注明下载版本、安装版文件名和便携版文件名。
+GitHub Actions 会构建并上传版本号文件和固定直链文件。Release 内容会注明下载版本、安装版文件名、便携版文件名和 latest/download 固定链接。
 
 ## 技术栈
 
 - WPF + Windows Forms overlay
 - .NET 8
 - LibreHardwareMonitorLib
+- KuikuiTelemetryService
 - PresentMon
 - ScreenRecorderLib
 - Inno Setup

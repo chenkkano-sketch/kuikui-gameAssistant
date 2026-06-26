@@ -52,4 +52,11 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
+Filename: "{cmd}"; Parameters: "/C sc stop KuikuiTelemetryService >nul 2>&1 & sc delete KuikuiTelemetryService >nul 2>&1 & exit /b 0"; Flags: runhidden waituntilterminated
+Filename: "{sys}\sc.exe"; Parameters: "create KuikuiTelemetryService binPath= ""{app}\service\KuikuiTelemetryService.exe"" start= auto DisplayName= ""Kuikui Telemetry Service"""; Flags: runhidden waituntilterminated
+Filename: "{sys}\sc.exe"; Parameters: "failure KuikuiTelemetryService reset= 60 actions= restart/3000/restart/10000/none/0"; Flags: runhidden waituntilterminated
+Filename: "{sys}\sc.exe"; Parameters: "start KuikuiTelemetryService"; Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+Filename: "{cmd}"; Parameters: "/C sc stop KuikuiTelemetryService >nul 2>&1 & sc delete KuikuiTelemetryService >nul 2>&1 & exit /b 0"; Flags: runhidden waituntilterminated

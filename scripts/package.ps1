@@ -10,8 +10,10 @@ $ErrorActionPreference = "Stop"
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $project = Join-Path $root "src\KuikuiGameAssistant\KuikuiGameAssistant.csproj"
+$serviceProject = Join-Path $root "src\KuikuiTelemetryService\KuikuiTelemetryService.csproj"
 $artifacts = Join-Path $root "artifacts"
 $publishDir = Join-Path $artifacts "publish\$Runtime"
+$servicePublishDir = Join-Path $publishDir "service"
 $portableDir = Join-Path $artifacts "portable\KuikuiGameAssistant"
 $installerScript = Join-Path $root "installer\KuikuiGameAssistant.iss"
 $dotnet = Join-Path $root ".dotnet\dotnet.exe"
@@ -57,14 +59,34 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
 }
 
+& $dotnet publish $serviceProject `
+    -c $Configuration `
+    -r $Runtime `
+    --self-contained true `
+    -o $servicePublishDir `
+    /p:Version=$Version `
+    /p:FileVersion=$fileVersion `
+    /p:AssemblyVersion=$fileVersion `
+    /p:InformationalVersion=$Version `
+    /p:PublishSingleFile=false `
+    /p:IncludeNativeLibrariesForSelfExtract=true
+
+if ($LASTEXITCODE -ne 0) {
+    throw "telemetry service publish failed with exit code $LASTEXITCODE."
+}
+
 New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
 Copy-Item -Path (Join-Path $publishDir "*") -Destination $portableDir -Recurse -Force
 Set-Content -Path (Join-Path $portableDir "portable.marker") -Value "portable" -Encoding ASCII
 
 $portableZip = Join-Path $artifacts "KuikuiGameAssistant-$Version-$Runtime-portable.zip"
+$stablePortableZip = Join-Path $artifacts "KuikuiGameAssistant-$Runtime-portable.zip"
 Remove-Item -LiteralPath $portableZip -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $stablePortableZip -Force -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $portableDir "*") -DestinationPath $portableZip -CompressionLevel Optimal
+Copy-Item -LiteralPath $portableZip -Destination $stablePortableZip -Force
 Write-Host "Portable package: $portableZip"
+Write-Host "Stable portable package: $stablePortableZip"
 
 if ($SkipInstaller) {
     Write-Host "Installer packaging skipped."
@@ -89,3 +111,17 @@ if ($null -eq $iscc) {
     "/DSourceDir=$publishDir" `
     "/DOutputDir=$artifacts" `
     $installerScript
+
+if ($LASTEXITCODE -ne 0) {
+    throw "installer packaging failed with exit code $LASTEXITCODE."
+}
+
+$installerPackage = Join-Path $artifacts "KuikuiGameAssistant-$Version-setup.exe"
+$stableInstallerPackage = Join-Path $artifacts "KuikuiGameAssistant-setup.exe"
+if (Test-Path -LiteralPath $installerPackage) {
+    Remove-Item -LiteralPath $stableInstallerPackage -Force -ErrorAction SilentlyContinue
+    Copy-Item -LiteralPath $installerPackage -Destination $stableInstallerPackage -Force
+    Write-Host "Stable installer package: $stableInstallerPackage"
+} else {
+    Write-Warning "Installer package was not found: $installerPackage"
+}

@@ -23,13 +23,29 @@ public partial class App : System.Windows.Application
 
         try
         {
+            if (e.Args.Any(x => x.Equals("--install-telemetry-service", StringComparison.OrdinalIgnoreCase)))
+            {
+                AppLogService.Info("Installing telemetry service from elevated helper.");
+                TelemetryEngineServiceInstaller.InstallOrRepairWithUi();
+                Shutdown();
+                return;
+            }
+
+            if (e.Args.Any(x => x.Equals("--install-temperature-engine", StringComparison.OrdinalIgnoreCase)))
+            {
+                AppLogService.Info("Installing temperature engine from elevated helper.");
+                TemperatureEngineInstaller.InstallOrRepairWithUi();
+                Shutdown();
+                return;
+            }
+
             AppLogService.Info("Creating overlay settings.");
             OverlaySettings = new OverlaySettings();
 
             AppLogService.Info("Loading settings.");
             Settings = new SettingsService();
             Settings.Load(OverlaySettings);
-            AppThemeService.Apply(Settings.AppSettings.UseDarkMode);
+            AppThemeService.Start(Settings.AppSettings);
 
             AppLogService.Info("Starting telemetry service.");
             Telemetry = new TelemetryService(Settings.AppSettings);
@@ -85,6 +101,7 @@ public partial class App : System.Windows.Application
             Capture?.Dispose();
             Telemetry?.Dispose();
             GameFilters?.Dispose();
+            AppThemeService.Stop();
         }
         catch (Exception ex)
         {
@@ -111,9 +128,10 @@ public partial class App : System.Windows.Application
                 return;
             }
 
+            var asset = result.Release.Asset;
             var answer = System.Windows.MessageBox.Show(
                 owner,
-                $"{result.Message}\n\n是否现在下载并更新？",
+                $"{result.Message}\n\n文件：{asset.Name}\n下载链接：{asset.DownloadUrl}\n\n是否现在下载并更新？",
                 "发现新版本",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Information);

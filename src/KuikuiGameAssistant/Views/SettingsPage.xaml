@@ -4,6 +4,33 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
             <Border Padding="18" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="220" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="外观" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="默认跟随 Windows 应用主题，系统切换浅色或深色时会同步刷新。"
+                                   Margin="0,6,20,0"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ComboBox x:Name="ThemeModeComboBox"
+                              Grid.Column="1"
+                              Height="36"
+                              VerticalAlignment="Center"
+                              Foreground="{DynamicResource TextPrimaryBrush}"
+                              Background="{DynamicResource InputBackgroundBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}"
+                              DisplayMemberPath="Title"
+                              SelectedValuePath="Mode"
+                              SelectedValue="{Binding ThemeMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+            </Border>
+
+            <Border Padding="18" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
                 <StackPanel>
                     <TextBlock Text="快捷键" FontSize="17" FontWeight="SemiBold" />
                     <Grid Margin="0,14,0,0">
@@ -16,19 +43,19 @@
                             <RowDefinition Height="46" />
                             <RowDefinition Height="46" />
                         </Grid.RowDefinitions>
-                        <TextBlock Text="截图" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="截图" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
                                  GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus"
                                  LostKeyboardFocus="HotkeyTextBox_LostKeyboardFocus"
                                  PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
                                  Text="{Binding ScreenshotHotkeyText, Mode=TwoWay, UpdateSourceTrigger=Explicit}" />
-                        <TextBlock Grid.Row="1" Text="开始/停止录屏" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Text="开始/停止录屏" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
                                  GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus"
                                  LostKeyboardFocus="HotkeyTextBox_LostKeyboardFocus"
                                  PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
                                  Text="{Binding RecordingHotkeyText, Mode=TwoWay, UpdateSourceTrigger=Explicit}" />
-                        <TextBlock Grid.Row="2" Text="打开/关闭悬浮窗" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Text="打开/关闭悬浮窗" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
                                  GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus"
                                  LostKeyboardFocus="HotkeyTextBox_LostKeyboardFocus"
@@ -38,7 +65,7 @@
                     <TextBlock Text="点击输入框后直接按新的组合键；Esc 取消，Backspace 清空。"
                                Margin="0,6,0,0"
                                FontSize="12"
-                               Foreground="{StaticResource TextSecondaryBrush}" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" />
                 </StackPanel>
             </Border>
 
@@ -71,15 +98,17 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="96" />
                             <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="104" />
+                            <ColumnDefinition Width="96" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="更新源：GitHub Releases"
                                        FontSize="13"
-                                       Foreground="{StaticResource TextSecondaryBrush}" />
-                            <TextBlock Text="作者：盔盔 · 博客 kkano.cc，留言酒馆支持反馈"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="API 受限时可直接打开 Release 或复制固定下载直链。"
                                        Margin="0,4,0,0"
                                        FontSize="13"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
                                        TextWrapping="Wrap" />
                         </StackPanel>
                         <Button Grid.Column="1"
@@ -91,8 +120,26 @@
                                 Click="OpenRepository_Click">
                             <TextBlock Text="GitHub" />
                         </Button>
+                        <Button Grid.Column="2"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Height="36"
+                                Width="88"
+                                MinWidth="0"
+                                Margin="8,0,0,0"
+                                Click="OpenLatestRelease_Click">
+                            <TextBlock Text="Release" />
+                        </Button>
+                        <Button Grid.Column="3"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Height="36"
+                                Width="96"
+                                MinWidth="0"
+                                Margin="8,0,0,0"
+                                Click="CopyDownloadLink_Click">
+                            <TextBlock Text="复制直链" />
+                        </Button>
                         <Button x:Name="CheckUpdateButton"
-                                Grid.Column="2"
+                                Grid.Column="4"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Height="36"
                                 Width="88"
@@ -119,7 +166,7 @@
                     </StackPanel>
                     <TextBlock x:Name="UpdateStatusText"
                                FontSize="13"
-                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
@@ -137,7 +184,7 @@
                             <RowDefinition Height="46" />
                             <RowDefinition Height="46" />
                         </Grid.RowDefinitions>
-                        <TextBlock Text="截图目录" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="截图目录" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
                                  Text="{Binding ScreenshotFolder, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         <Button Grid.Column="2" Style="{StaticResource SecondaryButtonStyle}" Height="36" Width="60" MinWidth="0" Margin="8,0,0,0"
@@ -145,7 +192,7 @@
                             <TextBlock Text="浏览" />
                         </Button>
 
-                        <TextBlock Grid.Row="1" Text="视频目录" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Text="视频目录" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
                                  Text="{Binding RecordingFolder, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource SecondaryButtonStyle}" Height="36" Width="60" MinWidth="0" Margin="8,0,0,0"
@@ -159,7 +206,7 @@
             <Border Padding="18" Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
                     <TextBlock Text="FPS 采集" FontSize="17" FontWeight="SemiBold" />
-                    <CheckBox Content="启用 PresentMon FPS 采集（默认开启，可降低后台占用时关闭）"
+                    <CheckBox Content="启用 FPS 后台引擎（安装版会自动启动 KuikuiTelemetryService）"
                               IsChecked="{Binding EnablePresentMon, Mode=TwoWay}"
                               Margin="0,14,0,10" />
                     <Button Style="{StaticResource SecondaryButtonStyle}"
@@ -179,7 +226,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="68" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="程序路径" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="程序路径" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
                                  Text="{Binding PresentMonPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         <Button Grid.Column="2" Style="{StaticResource SecondaryButtonStyle}" Height="36" Width="60" MinWidth="0" Margin="8,0,0,0"
@@ -187,9 +234,9 @@
                             <TextBlock Text="浏览" />
                         </Button>
                     </Grid>
-                    <TextBlock Text="可留空；程序会搜索 PATH、输出目录和 tools\PresentMon。真实 FPS 采集需要管理员运行，或把当前用户加入 Performance Log Users 组。"
+                    <TextBlock Text="安装版会自动安装并启动 FPS 后台服务；程序路径仅用于开发或便携模式诊断。"
                                FontSize="13"
-                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
