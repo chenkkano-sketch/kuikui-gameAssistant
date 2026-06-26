@@ -18,6 +18,8 @@ public sealed class UpdateService
     private const string StableInstallerAssetName = PackageBaseName + "-setup.exe";
     private const string StablePortableAssetName = PackageBaseName + "-win-x64-portable.zip";
     private const string PortableMarkerFile = "portable.marker";
+    private const string PendingUpdateManifestName = "pending-update.json";
+    private const int DownloadBufferSize = 81920;
     private static readonly TimeSpan StartupCheckInterval = TimeSpan.FromHours(24);
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
     private static readonly HttpClient HttpClient = new()
@@ -57,6 +59,13 @@ public sealed class UpdateService
         RepositoryOrDefault,
         $"v{CurrentVersion}",
         $"{PackageBaseName}-{CurrentVersion}-win-x64-portable.zip");
+
+    private static string UpdatesRootFolder => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "KuikuiGameAssistant",
+        "Updates");
+
+    private static string PendingUpdateManifestPath => Path.Combine(UpdatesRootFolder, PendingUpdateManifestName);
 
     private string RepositoryOrDefault => NormalizeRepository(_settings.GitHubRepository) ?? AppSettings.DefaultGitHubRepository;
 
@@ -138,35 +147,39 @@ public sealed class UpdateService
         }
     }
 
-    public async Task<UpdateApplyResult> DownloadAndApplyAsync(UpdateRelease release, CancellationToken cancellationToken = default)
+    public async Task<UpdateStageResult> DownloadAndStageAsync(
+        UpdateRelease release,
+        IProgress<UpdateDownloadProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var updatesFolder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "KuikuiGameAssistant",
-                "Updates",
-                release.TagName.TrimStart('v', 'V'));
+            var updatesFolder = Path.Combine(UpdatesRootFolder, release.TagName.TrimStart('v', 'V'));
             Directory.CreateDirectory(updatesFolder);
 
             var packagePath = Path.Combine(updatesFolder, SanitizeFileName(release.Asset.Name));
-            await DownloadFileAsync(release.Asset.DownloadUrl, packagePath, cancellationToken).ConfigureAwait(false);
+            await DownloadFileAsync(
+                release.Asset.DownloadUrl,
+                packagePath,
+                release.Asset.SizeBytes,
+                progress,
+                cancellationToken).ConfigureAwait(false);
 
-            if (release.Asset.Kind == UpdatePackageKind.Installer)
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = packagePath,
-                    UseShellExecute = true
-                });
-            }
-            else
-            {
-                StartPortableUpdater(packagePath);
-            }
+            var pendingUpdate = new PendingUpdateInfo(
+                release.TagName,
+                release.VersionText,
+                packagePath,
+                release.Asset.Name,
+                release.Asset.Kind,
+                release.Asset.SizeBytes,
+                DateTimeOffset.UtcNow);
+            await WritePendingUpdateAsync(pendingUpdate, cancellationToken).ConfigureAwait(false);
+            progress?.Report(new UpdateDownloadProgress(
+                new FileInfo(packagePath).Length,
+                new FileInfo(packagePath).Length,
+                "更新包已下载，等待重启更新..."));
 
-            WpfApplication.Current.Dispatcher.Invoke(() => WpfApplication.Current.Shutdown());
-            return new UpdateApplyResult(true, "更新程序已启动，应用即将退出。");
+            return new UpdateStageResult(true, $"更新包已下载：{release.TagName}。下次打开软件时会自动更新。");
         }
         catch (OperationCanceledException)
         {
@@ -174,7 +187,75 @@ public sealed class UpdateService
         }
         catch (Exception ex)
         {
-            return new UpdateApplyResult(false, $"应用更新失败：{ex.Message}");
+            return new UpdateStageResult(false, BuildDownloadFailureMessage(ex, release.Asset.DownloadUrl));
+        }
+    }
+
+    public async Task<UpdateApplyResult> DownloadAndApplyAsync(
+        UpdateRelease release,
+        IProgress<UpdateDownloadProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var stageResult = await DownloadAndStageAsync(release, progress, cancellationToken).ConfigureAwait(false);
+        return stageResult.Success
+            ? ApplyPendingUpdateAndShutdown()
+            : new UpdateApplyResult(false, stageResult.Message);
+    }
+
+    public PendingUpdateInfo? GetPendingUpdate()
+    {
+        try
+        {
+            if (!File.Exists(PendingUpdateManifestPath))
+            {
+                return null;
+            }
+
+            var json = File.ReadAllText(PendingUpdateManifestPath);
+            var pendingUpdate = JsonSerializer.Deserialize<PendingUpdateInfo>(json, JsonOptions);
+            if (pendingUpdate is null
+                || string.IsNullOrWhiteSpace(pendingUpdate.PackagePath)
+                || !File.Exists(pendingUpdate.PackagePath))
+            {
+                ClearPendingUpdate();
+                return null;
+            }
+
+            var pendingVersion = ParseVersion(pendingUpdate.VersionText);
+            if (pendingVersion is not null && pendingVersion <= CurrentVersion)
+            {
+                ClearPendingUpdate();
+                return null;
+            }
+
+            return pendingUpdate;
+        }
+        catch
+        {
+            ClearPendingUpdate();
+            return null;
+        }
+    }
+
+    public UpdateApplyResult ApplyPendingUpdateAndShutdown()
+    {
+        var pendingUpdate = GetPendingUpdate();
+        if (pendingUpdate is null)
+        {
+            return new UpdateApplyResult(false, "没有待应用的更新包。");
+        }
+
+        try
+        {
+            ClearPendingUpdate();
+            StartUpdatePackage(pendingUpdate.PackagePath, pendingUpdate.Kind);
+            WpfApplication.Current.Dispatcher.Invoke(() => WpfApplication.Current.Shutdown());
+            return new UpdateApplyResult(true, "更新程序已启动，应用即将退出。");
+        }
+        catch (Exception ex)
+        {
+            WritePendingUpdateBestEffort(pendingUpdate);
+            return new UpdateApplyResult(false, $"启动更新失败：{GetHelpfulExceptionMessage(ex)}");
         }
     }
 
@@ -383,14 +464,317 @@ public sealed class UpdateService
             : null;
     }
 
-    private static async Task DownloadFileAsync(string downloadUrl, string destinationPath, CancellationToken cancellationToken)
+    private static async Task DownloadFileAsync(
+        string downloadUrl,
+        string destinationPath,
+        long expectedSizeBytes,
+        IProgress<UpdateDownloadProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        var tempPath = destinationPath + ".download";
+        TryDeleteFile(tempPath);
+
+        try
+        {
+            await DownloadFileWithHttpClientAsync(
+                downloadUrl,
+                tempPath,
+                expectedSizeBytes,
+                progress,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested && IsRecoverableDownloadException(ex))
+        {
+            TryDeleteFile(tempPath);
+            progress?.Report(new UpdateDownloadProgress(
+                0,
+                expectedSizeBytes > 0 ? expectedSizeBytes : null,
+                "内置下载器连接失败，正在切换系统下载器..."));
+
+            await DownloadFileWithCurlAsync(
+                downloadUrl,
+                tempPath,
+                expectedSizeBytes,
+                progress,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        File.Move(tempPath, destinationPath, true);
+        var finalSize = new FileInfo(destinationPath).Length;
+        progress?.Report(new UpdateDownloadProgress(finalSize, finalSize, "下载完成，正在准备下次更新..."));
+    }
+
+    private static async Task WritePendingUpdateAsync(PendingUpdateInfo pendingUpdate, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(UpdatesRootFolder);
+        await using var stream = new FileStream(
+            PendingUpdateManifestPath,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            DownloadBufferSize,
+            useAsync: true);
+        await JsonSerializer.SerializeAsync(stream, pendingUpdate, JsonOptions, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void WritePendingUpdateBestEffort(PendingUpdateInfo pendingUpdate)
+    {
+        try
+        {
+            Directory.CreateDirectory(UpdatesRootFolder);
+            File.WriteAllText(PendingUpdateManifestPath, JsonSerializer.Serialize(pendingUpdate, JsonOptions));
+        }
+        catch
+        {
+        }
+    }
+
+    private static void ClearPendingUpdate()
+    {
+        TryDeleteFile(PendingUpdateManifestPath);
+    }
+
+    private static async Task DownloadFileWithHttpClientAsync(
+        string downloadUrl,
+        string tempPath,
+        long expectedSizeBytes,
+        IProgress<UpdateDownloadProgress>? progress,
+        CancellationToken cancellationToken)
     {
         using var response = await HttpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
+        var totalBytes = response.Content.Headers.ContentLength;
+        if ((totalBytes is null or <= 0) && expectedSizeBytes > 0)
+        {
+            totalBytes = expectedSizeBytes;
+        }
+
+        progress?.Report(new UpdateDownloadProgress(0, totalBytes, "正在下载更新包..."));
         await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        await using var destination = File.Create(destinationPath);
-        await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+        await using var destination = new FileStream(
+            tempPath,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            DownloadBufferSize,
+            useAsync: true);
+
+        var buffer = new byte[DownloadBufferSize];
+        var bytesReceived = 0L;
+        var nextReportAt = DateTimeOffset.UtcNow;
+        while (true)
+        {
+            var read = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+            {
+                break;
+            }
+
+            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+            bytesReceived += read;
+            if (DateTimeOffset.UtcNow >= nextReportAt || bytesReceived == totalBytes)
+            {
+                progress?.Report(new UpdateDownloadProgress(bytesReceived, totalBytes, "正在下载更新包..."));
+                nextReportAt = DateTimeOffset.UtcNow.AddMilliseconds(120);
+            }
+        }
+
+        progress?.Report(new UpdateDownloadProgress(bytesReceived, totalBytes, "正在校验下载包..."));
+    }
+
+    private static async Task DownloadFileWithCurlAsync(
+        string downloadUrl,
+        string tempPath,
+        long expectedSizeBytes,
+        IProgress<UpdateDownloadProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        var totalBytes = expectedSizeBytes > 0 ? expectedSizeBytes : (long?)null;
+        progress?.Report(new UpdateDownloadProgress(0, totalBytes, "正在使用系统下载器下载更新包..."));
+
+        using var process = Process.Start(CreateCurlDownloadStartInfo(downloadUrl, tempPath))
+            ?? throw new IOException("无法启动系统下载器 curl.exe。");
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
+        try
+        {
+            while (!process.HasExited)
+            {
+                if (File.Exists(tempPath))
+                {
+                    var currentSize = new FileInfo(tempPath).Length;
+                    progress?.Report(new UpdateDownloadProgress(currentSize, totalBytes, "正在使用系统下载器下载更新包..."));
+                }
+
+                await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+            }
+
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            TryKillProcess(process);
+            throw;
+        }
+
+        var stdout = await stdoutTask.ConfigureAwait(false);
+        var stderr = await stderrTask.ConfigureAwait(false);
+        if (process.ExitCode != 0)
+        {
+            var detail = TrimForStatus(string.IsNullOrWhiteSpace(stderr) ? stdout : stderr);
+            throw new IOException(string.IsNullOrWhiteSpace(detail)
+                ? $"系统下载器失败，退出码 {process.ExitCode}。"
+                : $"系统下载器失败，退出码 {process.ExitCode}：{detail}");
+        }
+
+        var finalSize = File.Exists(tempPath) ? new FileInfo(tempPath).Length : 0;
+        if (finalSize <= 0)
+        {
+            throw new IOException("系统下载器没有生成有效安装包。");
+        }
+
+        progress?.Report(new UpdateDownloadProgress(finalSize, totalBytes ?? finalSize, "正在校验下载包..."));
+    }
+
+    private static ProcessStartInfo CreateCurlDownloadStartInfo(string downloadUrl, string tempPath)
+    {
+        var startInfo = new ProcessStartInfo("curl.exe")
+        {
+            UseShellExecute = false,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden
+        };
+
+        foreach (var argument in new[]
+                 {
+                     "--location",
+                     "--fail",
+                     "--show-error",
+                     "--silent",
+                     "--ssl-no-revoke",
+                     "--connect-timeout",
+                     "20",
+                     "--retry",
+                     "3",
+                     "--retry-delay",
+                     "2",
+                     "--output",
+                     tempPath,
+                     downloadUrl
+                 })
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        return startInfo;
+    }
+
+    private static bool IsRecoverableDownloadException(Exception ex)
+    {
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            if (current is HttpRequestException
+                or IOException
+                or WebException
+                or TimeoutException
+                or OperationCanceledException
+                or System.ComponentModel.Win32Exception)
+            {
+                return true;
+            }
+
+            if (current.Message.Contains("SSL", StringComparison.OrdinalIgnoreCase)
+                || current.Message.Contains("TLS", StringComparison.OrdinalIgnoreCase)
+                || current.Message.Contains("connection", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string BuildDownloadFailureMessage(Exception ex, string downloadUrl)
+    {
+        var detail = GetHelpfulExceptionMessage(ex);
+        var prefix = IsRecoverableDownloadException(ex)
+            ? "应用更新失败：下载包时网络连接失败。"
+            : "应用更新失败：";
+
+        return $"{prefix}{detail}\n\n可以点击 Release 或复制直链手动下载：{downloadUrl}";
+    }
+
+    private static string GetHelpfulExceptionMessage(Exception ex)
+    {
+        var messages = new List<string>();
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            var message = current.Message.Trim();
+            if (string.IsNullOrWhiteSpace(message)
+                || message.Equals("See inner exception.", StringComparison.OrdinalIgnoreCase)
+                || messages.Contains(message))
+            {
+                continue;
+            }
+
+            messages.Add(message);
+        }
+
+        return messages.Count == 0 ? "未知错误。" : string.Join("；", messages);
+    }
+
+    private static string TrimForStatus(string value)
+    {
+        value = value.ReplaceLineEndings(" ").Trim();
+        return value.Length <= 240 ? value : value[..240] + "...";
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private static void TryKillProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private static void StartUpdatePackage(string packagePath, UpdatePackageKind kind)
+    {
+        if (kind == UpdatePackageKind.Installer)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = packagePath,
+                UseShellExecute = true
+            });
+            return;
+        }
+
+        StartPortableUpdater(packagePath);
     }
 
     private static string BuildGitHubFailureMessage(HttpResponseMessage response)

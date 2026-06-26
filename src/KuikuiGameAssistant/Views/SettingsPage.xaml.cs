@@ -54,12 +54,26 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
 
             CheckUpdateButton.IsEnabled = false;
             UpdateStatusText.Text = $"正在下载 {asset.Name}...";
-            var applyResult = await _updateService.DownloadAndApplyAsync(result.Release);
-            UpdateStatusText.Text = applyResult.Message;
+            ShowUpdateProgress(isIndeterminate: true);
+            var progress = new Progress<UpdateDownloadProgress>(value => ApplyUpdateProgress(asset.Name, value));
+            var stageResult = await _updateService.DownloadAndStageAsync(result.Release, progress);
+            UpdateStatusText.Text = stageResult.Message;
+            HideUpdateProgress();
+            if (!stageResult.Success)
+            {
+                return;
+            }
+
+            if (ShowUpdateReadyDialog(result.Release))
+            {
+                var applyResult = _updateService.ApplyPendingUpdateAndShutdown();
+                UpdateStatusText.Text = applyResult.Message;
+            }
         }
         catch (OperationCanceledException)
         {
             UpdateStatusText.Text = "已取消检查更新。";
+            HideUpdateProgress();
         }
         finally
         {
@@ -178,6 +192,63 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
     private string BuildManualDownloadText()
     {
         return $"最新 Release：{_updateService.LatestReleaseUrl}\n固定安装版直链：{_updateService.InstallerDirectDownloadUrl}\n固定便携版直链：{_updateService.PortableDirectDownloadUrl}\n当前版本安装版：{_updateService.CurrentInstallerDownloadUrl}\n当前版本便携版：{_updateService.CurrentPortableDownloadUrl}";
+    }
+
+    private void ShowUpdateProgress(bool isIndeterminate)
+    {
+        UpdateProgressBar.Visibility = System.Windows.Visibility.Visible;
+        UpdateProgressBar.IsIndeterminate = isIndeterminate;
+        UpdateProgressBar.Value = 0;
+    }
+
+    private void HideUpdateProgress()
+    {
+        UpdateProgressBar.IsIndeterminate = false;
+        UpdateProgressBar.Value = 0;
+        UpdateProgressBar.Visibility = System.Windows.Visibility.Collapsed;
+    }
+
+    private void ApplyUpdateProgress(string assetName, UpdateDownloadProgress progress)
+    {
+        UpdateProgressBar.Visibility = System.Windows.Visibility.Visible;
+        if (progress.Percent is double percent)
+        {
+            UpdateProgressBar.IsIndeterminate = false;
+            UpdateProgressBar.Value = Math.Clamp(percent, 0d, 100d);
+            UpdateStatusText.Text = $"{progress.Phase}\n{assetName}\n{FormatProgress(progress.BytesReceived, progress.TotalBytes)}";
+            return;
+        }
+
+        UpdateProgressBar.IsIndeterminate = true;
+        UpdateStatusText.Text = $"{progress.Phase}\n{assetName}\n已下载 {FormatDownloadedSize(progress.BytesReceived)}";
+    }
+
+    private bool ShowUpdateReadyDialog(UpdateRelease release)
+    {
+        var owner = System.Windows.Window.GetWindow(this);
+        var dialog = new UpdateReadyDialog(release)
+        {
+            Owner = owner
+        };
+        dialog.ShowDialog();
+        return dialog.RestartRequested;
+    }
+
+    private static string FormatProgress(long bytesReceived, long? totalBytes)
+    {
+        if (totalBytes is > 0)
+        {
+            var percent = Math.Clamp(bytesReceived * 100d / totalBytes.Value, 0d, 100d);
+            return $"{FormatDownloadedSize(bytesReceived)} / {FormatDownloadedSize(totalBytes.Value)}（{percent:F0}%）";
+        }
+
+        return $"已下载 {FormatDownloadedSize(bytesReceived)}";
+    }
+
+    private static string FormatDownloadedSize(long bytes)
+    {
+        var mb = Math.Max(0, bytes) / 1024d / 1024d;
+        return $"{mb:F1} MB";
     }
 
     private void BrowseScreenshotFolder_Click(object sender, System.Windows.RoutedEventArgs e)

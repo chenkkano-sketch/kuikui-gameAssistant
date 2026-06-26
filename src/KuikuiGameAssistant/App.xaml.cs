@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Threading;
 using KuikuiGameAssistant.Services;
 using KuikuiGameAssistant.ViewModels;
+using KuikuiGameAssistant.Views;
 
 namespace KuikuiGameAssistant;
 
@@ -46,6 +47,19 @@ public partial class App : System.Windows.Application
             Settings = new SettingsService();
             Settings.Load(OverlaySettings);
             AppThemeService.Start(Settings.AppSettings);
+            Updates = new UpdateService(Settings.AppSettings);
+
+            AppLogService.Info("Checking pending update.");
+            if (Updates.GetPendingUpdate() is not null)
+            {
+                var applyResult = Updates.ApplyPendingUpdateAndShutdown();
+                if (applyResult.Success)
+                {
+                    return;
+                }
+
+                AppLogService.Error("Applying pending update failed: " + applyResult.Message);
+            }
 
             AppLogService.Info("Starting telemetry service.");
             Telemetry = new TelemetryService(Settings.AppSettings);
@@ -53,7 +67,6 @@ public partial class App : System.Windows.Application
             AppLogService.Info("Creating app services.");
             HardwareInfo = new HardwareInfoService();
             Capture = new CaptureService(Settings.AppSettings);
-            Updates = new UpdateService(Settings.AppSettings);
             GameFilters = new GameFilterService();
             GameFilters.Apply(Settings.AppSettings.GameFilter);
 
@@ -137,12 +150,49 @@ public partial class App : System.Windows.Application
                 MessageBoxImage.Information);
             if (answer == MessageBoxResult.Yes)
             {
-                await Updates.DownloadAndApplyAsync(result.Release);
+                var stageResult = await Updates.DownloadAndStageAsync(result.Release);
+                if (stageResult.Success)
+                {
+                    ShowUpdateReadyDialog(owner, result.Release);
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show(
+                        owner,
+                        stageResult.Message,
+                        "更新下载失败",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
             }
         }
         catch (Exception ex)
         {
             AppLogService.Error("Startup update check failed.", ex);
+        }
+    }
+
+    private static void ShowUpdateReadyDialog(Window owner, Models.UpdateRelease release)
+    {
+        var dialog = new UpdateReadyDialog(release)
+        {
+            Owner = owner
+        };
+        dialog.ShowDialog();
+        if (!dialog.RestartRequested)
+        {
+            return;
+        }
+
+        var applyResult = Updates.ApplyPendingUpdateAndShutdown();
+        if (!applyResult.Success)
+        {
+            System.Windows.MessageBox.Show(
+                owner,
+                applyResult.Message,
+                "启动更新失败",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
     }
 
