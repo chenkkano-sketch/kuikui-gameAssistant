@@ -27,7 +27,6 @@ public partial class OverlayWindow : Window
     private const int DwmwaCloaked = 14;
     private const uint MonitorDefaultToNearest = 2;
     private const int FullscreenTolerancePx = 2;
-    private const double PlacementMargin = 16;
     private static readonly IntPtr HtTransparent = new(-1);
     private readonly TelemetryService _telemetry;
     private readonly OverlaySettings _settings;
@@ -209,15 +208,15 @@ public partial class OverlayWindow : Window
 
         var left = _settings.Placement switch
         {
-            OverlayPlacement.TopLeft or OverlayPlacement.Left or OverlayPlacement.BottomLeft => bounds.Left + PlacementMargin,
-            OverlayPlacement.TopRight or OverlayPlacement.Right or OverlayPlacement.BottomRight => bounds.Right - width - PlacementMargin,
+            OverlayPlacement.TopLeft or OverlayPlacement.Left or OverlayPlacement.BottomLeft => bounds.Left,
+            OverlayPlacement.TopRight or OverlayPlacement.Right or OverlayPlacement.BottomRight => bounds.Right - width,
             _ => horizontalCenter
         };
 
         var top = _settings.Placement switch
         {
-            OverlayPlacement.TopLeft or OverlayPlacement.Top or OverlayPlacement.TopRight => bounds.Top + PlacementMargin,
-            OverlayPlacement.BottomLeft or OverlayPlacement.Bottom or OverlayPlacement.BottomRight => bounds.Bottom - height - PlacementMargin,
+            OverlayPlacement.TopLeft or OverlayPlacement.Top or OverlayPlacement.TopRight => bounds.Top,
+            OverlayPlacement.BottomLeft or OverlayPlacement.Bottom or OverlayPlacement.BottomRight => bounds.Bottom - height,
             _ => verticalCenter
         };
 
@@ -232,15 +231,15 @@ public partial class OverlayWindow : Window
             return fullscreenBounds;
         }
 
-        if (TryGetOverlayMonitorWorkArea(out var monitorWorkArea))
+        if (TryGetOverlayMonitorBounds(out var monitorBounds))
         {
-            return monitorWorkArea;
+            return monitorBounds;
         }
 
-        return SystemParameters.WorkArea;
+        return new System.Windows.Rect(0, 0, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
     }
 
-    private bool TryGetOverlayMonitorWorkArea(out System.Windows.Rect bounds)
+    private bool TryGetOverlayMonitorBounds(out System.Windows.Rect bounds)
     {
         bounds = default;
         var hwnd = new WindowInteropHelper(this).Handle;
@@ -262,7 +261,7 @@ public partial class OverlayWindow : Window
             return false;
         }
 
-        bounds = NativeRectToDeviceIndependentRect(monitorInfo.WorkArea);
+        bounds = NativeRectToDeviceIndependentRect(monitorInfo.Monitor);
         return bounds.Width > 0 && bounds.Height > 0;
     }
 
