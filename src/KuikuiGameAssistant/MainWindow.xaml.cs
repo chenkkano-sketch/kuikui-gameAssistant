@@ -349,7 +349,15 @@ public partial class MainWindow : Window
     {
         RegisterConfiguredHotkey(1, App.Settings.AppSettings.ScreenshotHotkeyText, CaptureScreenshotFromHotkey);
         RegisterConfiguredHotkey(2, App.Settings.AppSettings.RecordingHotkeyText, ToggleRecordingFromHotkey);
-        RegisterConfiguredHotkey(3, App.Settings.AppSettings.OverlayHotkeyText, ToggleOverlay);
+
+        if (App.Settings.AppSettings.OverlayHotkeyEnabled)
+        {
+            RegisterConfiguredHotkey(3, App.Settings.AppSettings.OverlayHotkeyText, ToggleOverlay);
+        }
+        else
+        {
+            _hotkeys.Unregister(3);
+        }
     }
 
     private void RegisterConfiguredHotkey(int id, string hotkeyText, Action handler)
@@ -370,7 +378,8 @@ public partial class MainWindow : Window
     {
         if (e.PropertyName is nameof(AppSettings.ScreenshotHotkeyText)
             or nameof(AppSettings.RecordingHotkeyText)
-            or nameof(AppSettings.OverlayHotkeyText))
+            or nameof(AppSettings.OverlayHotkeyText)
+            or nameof(AppSettings.OverlayHotkeyEnabled))
         {
             RegisterConfiguredHotkeys();
         }

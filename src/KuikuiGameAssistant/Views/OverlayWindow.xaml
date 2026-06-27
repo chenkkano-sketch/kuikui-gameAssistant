@@ -15,7 +15,7 @@
             Background="{DynamicResource SurfaceBrush}"
             BorderThickness="0"
             CornerRadius="8"
-            Padding="10"
+            Padding="6"
             MouseLeftButtonDown="Overlay_MouseLeftButtonDown">
         <Grid>
             <ItemsControl x:Name="HorizontalPanel"
@@ -29,7 +29,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal"
-                                    Margin="0,0,18,0"
+                                    Margin="0,0,12,0"
                                     VerticalAlignment="Center"
                                     Visibility="{Binding Visibility}">
                             <TextBlock Text="{Binding Label}"
@@ -57,10 +57,10 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Grid Margin="0,0,0,10"
+                        <Grid Margin="0,0,0,6"
                               Visibility="{Binding Visibility}">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="58" />
+                                <ColumnDefinition Width="42" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding Label}"

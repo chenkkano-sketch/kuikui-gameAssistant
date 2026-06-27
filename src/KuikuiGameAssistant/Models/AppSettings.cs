@@ -25,6 +25,7 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
     private string _gitHubRepository = DefaultGitHubRepository;
     private string _screenshotHotkeyText = "Ctrl+Shift+S";
     private string _recordingHotkeyText = "Ctrl+Shift+R";
+    private bool _overlayHotkeyEnabled = true;
     private string _overlayHotkeyText = "Ctrl+Shift+O";
     private DateTimeOffset _lastUpdateCheckUtc = DateTimeOffset.MinValue;
 
@@ -173,6 +174,12 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
     {
         get => _recordingHotkeyText;
         set => SetProperty(ref _recordingHotkeyText, value ?? string.Empty);
+    }
+
+    public bool OverlayHotkeyEnabled
+    {
+        get => _overlayHotkeyEnabled;
+        set => SetProperty(ref _overlayHotkeyEnabled, value);
     }
 
     public string OverlayHotkeyText

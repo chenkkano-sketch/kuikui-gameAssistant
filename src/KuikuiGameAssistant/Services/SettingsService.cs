@@ -104,6 +104,7 @@ public sealed class SettingsService
         settings.HorizontalHeight = persisted.HorizontalHeight;
         settings.VerticalWidth = persisted.VerticalWidth;
         settings.VerticalHeight = persisted.VerticalHeight;
+        settings.IsClickThroughEnabled = persisted.IsClickThroughEnabled;
         if (persisted.Metrics is null)
         {
             settings.HorizontalWidth = Math.Max(settings.HorizontalWidth, 660);
@@ -133,6 +134,7 @@ public sealed class SettingsService
             HorizontalHeight = settings.HorizontalHeight,
             VerticalWidth = settings.VerticalWidth,
             VerticalHeight = settings.VerticalHeight,
+            IsClickThroughEnabled = settings.IsClickThroughEnabled,
             Metrics = settings.SnapshotMetrics()
                 .Select(x => new PersistedOverlayMetric
                 {
@@ -218,6 +220,7 @@ public sealed class SettingsService
         public double HorizontalHeight { get; set; }
         public double VerticalWidth { get; set; }
         public double VerticalHeight { get; set; }
+        public bool IsClickThroughEnabled { get; set; }
         public IReadOnlyList<PersistedOverlayMetric>? Metrics { get; set; }
     }
 

@@ -42,6 +42,7 @@
                             <RowDefinition Height="46" />
                             <RowDefinition Height="46" />
                             <RowDefinition Height="46" />
+                            <RowDefinition Height="46" />
                         </Grid.RowDefinitions>
                         <TextBlock Text="截图" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
@@ -55,8 +56,14 @@
                                  LostKeyboardFocus="HotkeyTextBox_LostKeyboardFocus"
                                  PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
                                  Text="{Binding RecordingHotkeyText, Mode=TwoWay, UpdateSourceTrigger=Explicit}" />
-                        <TextBlock Grid.Row="2" Text="打开/关闭悬浮窗" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                        <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
+                        <TextBlock Grid.Row="2" Text="悬浮窗快捷键" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <CheckBox Grid.Row="2" Grid.Column="1"
+                                  Content="启用打开/关闭悬浮窗快捷键"
+                                  IsChecked="{Binding OverlayHotkeyEnabled, Mode=TwoWay}"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Text="打开/关闭悬浮窗" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
+                                 IsEnabled="{Binding OverlayHotkeyEnabled}"
                                  GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus"
                                  LostKeyboardFocus="HotkeyTextBox_LostKeyboardFocus"
                                  PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"

@@ -20,6 +20,7 @@ public sealed class OverlaySettings : ObservableObject
     private double _horizontalHeight = 58;
     private double _verticalWidth = 132;
     private double _verticalHeight = 292;
+    private bool _isClickThroughEnabled;
 
     public OverlaySettings()
     {
@@ -81,7 +82,7 @@ public sealed class OverlaySettings : ObservableObject
         get => _backgroundOpacity;
         set
         {
-            var next = Math.Clamp(value, 0.2, 1);
+            var next = Math.Clamp(value, 0, 1);
             if (SetProperty(ref _backgroundOpacity, next))
             {
                 OnPropertyChanged(nameof(BackgroundBrush));
@@ -119,7 +120,7 @@ public sealed class OverlaySettings : ObservableObject
         get => _horizontalWidth;
         set
         {
-            if (SetProperty(ref _horizontalWidth, Math.Clamp(value, 480, 880)))
+            if (SetProperty(ref _horizontalWidth, Math.Clamp(value, 180, 880)))
             {
                 NotifyLayoutProperties();
             }
@@ -131,7 +132,7 @@ public sealed class OverlaySettings : ObservableObject
         get => _horizontalHeight;
         set
         {
-            if (SetProperty(ref _horizontalHeight, Math.Clamp(value, 46, 96)))
+            if (SetProperty(ref _horizontalHeight, Math.Clamp(value, 30, 96)))
             {
                 NotifyLayoutProperties();
             }
@@ -143,7 +144,7 @@ public sealed class OverlaySettings : ObservableObject
         get => _verticalWidth;
         set
         {
-            if (SetProperty(ref _verticalWidth, Math.Clamp(value, 108, 220)))
+            if (SetProperty(ref _verticalWidth, Math.Clamp(value, 88, 220)))
             {
                 NotifyLayoutProperties();
             }
@@ -155,11 +156,17 @@ public sealed class OverlaySettings : ObservableObject
         get => _verticalHeight;
         set
         {
-            if (SetProperty(ref _verticalHeight, Math.Clamp(value, 220, 440)))
+            if (SetProperty(ref _verticalHeight, Math.Clamp(value, 96, 440)))
             {
                 NotifyLayoutProperties();
             }
         }
+    }
+
+    public bool IsClickThroughEnabled
+    {
+        get => _isClickThroughEnabled;
+        set => SetProperty(ref _isClickThroughEnabled, value);
     }
 
     public MediaBrush BackgroundBrush
@@ -234,6 +241,7 @@ public sealed class OverlaySettings : ObservableObject
         HorizontalHeight = 58;
         VerticalWidth = 132;
         VerticalHeight = 292;
+        IsClickThroughEnabled = false;
         ApplyMetricSettings(null);
     }
 

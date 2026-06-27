@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using KuikuiGameAssistant.Models;
 using KuikuiGameAssistant.Services;
@@ -14,8 +16,13 @@ namespace KuikuiGameAssistant.Views;
 
 public partial class OverlayWindow : Window
 {
+    private const int GwlExStyle = -20;
+    private const int WsExTransparent = 0x00000020;
+    private const int WmNcHitTest = 0x0084;
+    private static readonly IntPtr HtTransparent = new(-1);
     private readonly TelemetryService _telemetry;
     private readonly OverlaySettings _settings;
+    private HwndSource? _source;
 
     public OverlayWindow(TelemetryService telemetry, OverlaySettings settings)
     {
@@ -35,11 +42,20 @@ public partial class OverlayWindow : Window
 
     public ObservableCollection<OverlayMetricDisplayItem> Metrics { get; } = new();
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        _source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        _source?.AddHook(WndProc);
+        ApplyClickThrough();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _telemetry.SnapshotUpdated -= Telemetry_SnapshotUpdated;
         _settings.PropertyChanged -= Settings_PropertyChanged;
         _settings.Metrics.CollectionChanged -= Metrics_CollectionChanged;
+        _source?.RemoveHook(WndProc);
         ClearMetrics();
         base.OnClosed(e);
     }
@@ -95,6 +111,11 @@ public partial class OverlayWindow : Window
 
     private void Overlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_settings.IsClickThroughEnabled)
+        {
+            return;
+        }
+
         DragMove();
     }
 
@@ -110,9 +131,11 @@ public partial class OverlayWindow : Window
         Width = _settings.CurrentWidth;
         Height = _settings.CurrentHeight;
         RootBorder.Padding = _settings.LayoutMode == OverlayLayoutMode.Horizontal
-            ? new Thickness(10)
-            : new Thickness(12, 8, 12, 12);
+            ? new Thickness(6, 4, 6, 4)
+            : new Thickness(6, 5, 6, 5);
         RootBorder.Background = _settings.BackgroundBrush;
+        RootBorder.IsHitTestVisible = !_settings.IsClickThroughEnabled;
+        ApplyClickThrough();
 
         foreach (var metric in Metrics)
         {
@@ -141,6 +164,42 @@ public partial class OverlayWindow : Window
 
         Metrics.Clear();
     }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WmNcHitTest && _settings.IsClickThroughEnabled)
+        {
+            handled = true;
+            return HtTransparent;
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void ApplyClickThrough()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var exStyle = GetWindowLong(hwnd, GwlExStyle);
+        var nextStyle = _settings.IsClickThroughEnabled
+            ? exStyle | WsExTransparent
+            : exStyle & ~WsExTransparent;
+
+        if (nextStyle != exStyle)
+        {
+            _ = SetWindowLong(hwnd, GwlExStyle, nextStyle);
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll")]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 }
 
 public sealed class OverlayMetricDisplayItem : ObservableObject, IDisposable

@@ -55,6 +55,11 @@
                                    Margin="0,10,0,0"
                                    FontSize="12"
                                    Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <CheckBox Content="固定悬浮窗（鼠标穿透）"
+                                  IsChecked="{Binding IsClickThroughEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  Checked="ClickThroughToggle_Changed"
+                                  Unchecked="ClickThroughToggle_Changed"
+                                  Margin="0,12,0,0" />
                     </StackPanel>
                 </Border>
 
@@ -89,7 +94,7 @@
                                        FontSize="12"
                                        Foreground="{DynamicResource TextSecondaryBrush}" />
                         </Grid>
-                        <Slider Minimum="0.2"
+                        <Slider Minimum="0"
                                 Maximum="1"
                                 Value="{Binding BackgroundOpacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 TickFrequency="0.01"
@@ -138,13 +143,13 @@
                                        Foreground="{DynamicResource TextSecondaryBrush}" />
                         </Grid>
                         <TextBlock Text="宽度" Margin="0,10,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <Slider Minimum="480"
+                        <Slider Minimum="180"
                                 Maximum="880"
                                 Value="{Binding HorizontalWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 TickFrequency="10"
                                 IsSnapToTickEnabled="True" />
                         <TextBlock Text="高度" Margin="0,8,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <Slider Minimum="46"
+                        <Slider Minimum="30"
                                 Maximum="96"
                                 Value="{Binding HorizontalHeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 TickFrequency="2"
@@ -162,13 +167,13 @@
                                        Foreground="{DynamicResource TextSecondaryBrush}" />
                         </Grid>
                         <TextBlock Text="宽度" Margin="0,10,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <Slider Minimum="108"
+                        <Slider Minimum="88"
                                 Maximum="220"
                                 Value="{Binding VerticalWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 TickFrequency="4"
                                 IsSnapToTickEnabled="True" />
                         <TextBlock Text="高度" Margin="0,8,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <Slider Minimum="220"
+                        <Slider Minimum="96"
                                 Maximum="440"
                                 Value="{Binding VerticalHeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 TickFrequency="5"
@@ -252,7 +257,7 @@
                                     Background="{Binding BackgroundBrush}"
                                     BorderThickness="0"
                                     CornerRadius="8"
-                                    Padding="10"
+                                    Padding="6"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center">
                                 <Grid>
@@ -267,7 +272,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal"
-                                                            Margin="0,0,18,0"
+                                                            Margin="0,0,12,0"
                                                             VerticalAlignment="Center">
                                                     <StackPanel.Style>
                                                         <Style TargetType="{x:Type StackPanel}">
@@ -304,7 +309,7 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Grid Margin="0,0,0,10">
+                                                <Grid Margin="0,0,0,6">
                                                     <Grid.Style>
                                                         <Style TargetType="{x:Type Grid}">
                                                             <Setter Property="Visibility" Value="Visible" />
@@ -316,7 +321,7 @@
                                                         </Style>
                                                     </Grid.Style>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="58" />
+                                                        <ColumnDefinition Width="42" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Text="{Binding Label}"
