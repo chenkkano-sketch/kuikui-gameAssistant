@@ -62,6 +62,14 @@ public partial class OverlayPage : System.Windows.Controls.UserControl
         }
     }
 
+    private void FullscreenVisibilityToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (IsLoaded)
+        {
+            SaveSettings();
+        }
+    }
+
     private void BackgroundSwatch_Click(object sender, RoutedEventArgs e)
     {
         _settings.BackgroundColor = ColorFromTag(sender);

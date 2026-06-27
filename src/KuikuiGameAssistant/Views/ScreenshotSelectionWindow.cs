@@ -1,19 +1,25 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+using System.Text;
 using Forms = System.Windows.Forms;
 
 namespace KuikuiGameAssistant.Views;
 
 public sealed class ScreenshotSelectionWindow : Forms.Form
 {
+    private const int GwlExStyle = -20;
+    private const int WsExToolWindow = 0x00000080;
+    private const int DwmwaExtendedFrameBounds = 9;
+    private const int DwmwaCloaked = 14;
     private static readonly Color AccentColor = Color.FromArgb(255, 0, 120, 212);
     private static readonly Color ToolbarBackColor = Color.FromArgb(242, 17, 24, 39);
     private static readonly Color ToolbarItemColor = Color.FromArgb(255, 55, 65, 81);
     private static readonly Color[] Palette =
     {
-        Color.FromArgb(255, 34, 197, 94),
         Color.FromArgb(255, 239, 68, 68),
+        Color.FromArgb(255, 34, 197, 94),
         Color.FromArgb(255, 245, 158, 11),
         Color.FromArgb(255, 59, 130, 246),
         Color.FromArgb(255, 168, 85, 247),
@@ -28,9 +34,11 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
     private readonly List<ToolbarButton> _toolbarButtons = new();
     private readonly List<StyleSwatch> _colorSwatches = new();
     private readonly List<ThicknessSwatch> _thicknessSwatches = new();
+    private readonly List<WindowCandidate> _windowCandidates;
     private readonly Forms.TextBox _textEditor = new();
 
     private int _selectedAnnotationIndex = -1;
+    private int _editingTextAnnotationIndex = -1;
     private Point _startPoint;
     private Point _currentPoint;
     private Point _annotationStart;
@@ -41,8 +49,11 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
     private Rectangle _selectionBeforeResize;
     private Annotation? _annotationBeforeEdit;
     private List<Point>? _activeStroke;
+    private WindowCandidate? _hoverWindowCandidate;
+    private WindowCandidate? _pendingWindowCandidate;
     private Rectangle _selection;
     private RectangleF _styleMenuBounds;
+    private Point _pendingWindowStart;
     private bool _isDraggingSelection;
     private bool _isResizingSelection;
     private bool _isAnnotating;
@@ -67,6 +78,7 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         _cursorPoint = ClampToBitmap(new Point(
             Forms.Cursor.Position.X - _virtualBounds.Left,
             Forms.Cursor.Position.Y - _virtualBounds.Top));
+        _windowCandidates = BuildWindowCandidates();
 
         AutoScaleMode = Forms.AutoScaleMode.None;
         Bounds = _virtualBounds;
@@ -108,7 +120,12 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         e.Graphics.DrawImageUnscaled(_screenBitmap, Point.Empty);
 
-        var selection = _isDraggingSelection ? GetClientSelection() : _selection;
+        var isWindowPreview = !_hasSelection && !_isDraggingSelection && _hoverWindowCandidate is not null;
+        var selection = _isDraggingSelection
+            ? GetClientSelection()
+            : isWindowPreview
+                ? _hoverWindowCandidate!.Bounds
+                : _selection;
         using var dimBrush = new SolidBrush(Color.FromArgb(138, 0, 0, 0));
         if (selection.Width > 0 && selection.Height > 0)
         {
@@ -123,7 +140,15 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
             DrawSelectedAnnotationAdorners(e.Graphics);
             e.Graphics.Restore(state);
 
-            DrawSelectionFrame(e.Graphics, selection);
+            if (isWindowPreview)
+            {
+                DrawWindowCandidateFrame(e.Graphics, selection);
+            }
+            else
+            {
+                DrawSelectionFrame(e.Graphics, selection);
+            }
+
             DrawSizeLabel(e.Graphics, selection);
 
             if (_hasSelection && !_isDraggingSelection)
@@ -153,6 +178,13 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
 
         if (e.Button == Forms.MouseButtons.Right)
         {
+            if (_hasSelection)
+            {
+                ClearSelection();
+                Invalidate();
+                return;
+            }
+
             CancelSelection();
             return;
         }
@@ -200,6 +232,13 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
             return;
         }
 
+        if (!_hasSelection && _hoverWindowCandidate is { } windowCandidate && windowCandidate.Bounds.Contains(e.Location))
+        {
+            _pendingWindowCandidate = windowCandidate;
+            _pendingWindowStart = e.Location;
+            return;
+        }
+
         _startPoint = e.Location;
         _currentPoint = e.Location;
         _selection = Rectangle.Empty;
@@ -215,6 +254,26 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
     {
         var previousCursorPoint = _cursorPoint;
         _cursorPoint = ClampToBitmap(e.Location);
+
+        if (_pendingWindowCandidate is not null)
+        {
+            if (Distance(_pendingWindowStart, e.Location) <= 6)
+            {
+                return;
+            }
+
+            _startPoint = _pendingWindowStart;
+            _currentPoint = e.Location;
+            _pendingWindowCandidate = null;
+            _selection = Rectangle.Empty;
+            _hasSelection = false;
+            _annotations.Clear();
+            _selectedAnnotationIndex = -1;
+            _styleMenuVisible = false;
+            _isDraggingSelection = true;
+            Invalidate();
+            return;
+        }
 
         if (_isDraggingSelection)
         {
@@ -245,8 +304,9 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
             return;
         }
 
+        var hoverChanged = UpdateHoveredWindowCandidate(e.Location);
         UpdateCursor(e.Location);
-        if (previousCursorPoint != _cursorPoint)
+        if (previousCursorPoint != _cursorPoint || hoverChanged)
         {
             Invalidate();
         }
@@ -258,6 +318,14 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
 
         if (e.Button != Forms.MouseButtons.Left)
         {
+            return;
+        }
+
+        if (_pendingWindowCandidate is { } windowCandidate)
+        {
+            _pendingWindowCandidate = null;
+            SelectWindowCandidate(windowCandidate);
+            Invalidate();
             return;
         }
 
@@ -305,7 +373,17 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
     protected override void OnMouseDoubleClick(Forms.MouseEventArgs e)
     {
         _cursorPoint = ClampToBitmap(e.Location);
-        if (e.Button == Forms.MouseButtons.Left && _hasSelection && _selection.Contains(e.Location))
+        if (e.Button != Forms.MouseButtons.Left || !_hasSelection)
+        {
+            return;
+        }
+
+        if (BeginTextAnnotationEdit(e.Location))
+        {
+            return;
+        }
+
+        if (_selection.Contains(e.Location))
         {
             _isAnnotating = false;
             _activeStroke = null;
@@ -528,7 +606,7 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
     private bool TryBeginAnnotationEdit(Point point)
     {
         var hit = HitAnnotation(point);
-        if (hit is null)
+        if (hit is null || _annotations[hit.Index] is not TextAnnotation)
         {
             return false;
         }
@@ -549,23 +627,8 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         for (var i = _annotations.Count - 1; i >= 0; i--)
         {
             var annotation = _annotations[i];
-            if (annotation is ArrowAnnotation arrow)
+            if (annotation is not TextAnnotation)
             {
-                if (HandleCircle(arrow.Start, 18).Contains(point))
-                {
-                    return new AnnotationHit(i, AnnotationEditHandle.ArrowStart);
-                }
-
-                if (HandleCircle(arrow.End, 18).Contains(point))
-                {
-                    return new AnnotationHit(i, AnnotationEditHandle.ArrowEnd);
-                }
-
-                if (DistanceToSegment(point, arrow.Start, arrow.End) <= Math.Max(7, arrow.Width + 4))
-                {
-                    return new AnnotationHit(i, AnnotationEditHandle.Move);
-                }
-
                 continue;
             }
 
@@ -783,10 +846,11 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
     {
         if (!_hasSelection)
         {
-            Cursor = Forms.Cursors.Cross;
+            Cursor = _hoverWindowCandidate is null ? Forms.Cursors.Cross : Forms.Cursors.Hand;
             return;
         }
 
+        var annotationHit = HitAnnotation(point);
         Cursor = HitResizeHandle(point) switch
         {
             ResizeHandle.TopLeft or ResizeHandle.BottomRight => Forms.Cursors.SizeNWSE,
@@ -795,9 +859,23 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
             ResizeHandle.Top or ResizeHandle.Bottom => Forms.Cursors.SizeNS,
             _ when _toolbarButtons.Any(x => x.Bounds.Contains(point))
                    || (_styleMenuVisible && _styleMenuBounds.Contains(point)) => Forms.Cursors.Hand,
+            _ when annotationHit is not null => CursorForAnnotationHandle(annotationHit.Handle),
             _ when _selection.Contains(point) && _activeTool == AnnotationTool.Text => Forms.Cursors.IBeam,
             _ when _selection.Contains(point) => Forms.Cursors.Cross,
             _ => Forms.Cursors.Cross
+        };
+    }
+
+    private static Forms.Cursor CursorForAnnotationHandle(AnnotationEditHandle handle)
+    {
+        return handle switch
+        {
+            AnnotationEditHandle.TopLeft or AnnotationEditHandle.BottomRight => Forms.Cursors.SizeNWSE,
+            AnnotationEditHandle.TopRight or AnnotationEditHandle.BottomLeft => Forms.Cursors.SizeNESW,
+            AnnotationEditHandle.Left or AnnotationEditHandle.Right => Forms.Cursors.SizeWE,
+            AnnotationEditHandle.Top or AnnotationEditHandle.Bottom => Forms.Cursors.SizeNS,
+            AnnotationEditHandle.Move => Forms.Cursors.SizeAll,
+            _ => Forms.Cursors.Hand
         };
     }
 
@@ -853,6 +931,179 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         _annotations.Clear();
         _selectedAnnotationIndex = -1;
         _styleMenuVisible = false;
+    }
+
+    private void ClearSelection()
+    {
+        _selection = Rectangle.Empty;
+        _hasSelection = false;
+        _annotations.Clear();
+        _selectedAnnotationIndex = -1;
+        _styleMenuVisible = false;
+        _isDraggingSelection = false;
+        _isResizingSelection = false;
+        _isAnnotating = false;
+        _isEditingAnnotation = false;
+        _pendingWindowCandidate = null;
+        _activeStroke = null;
+        UpdateHoveredWindowCandidate(_cursorPoint);
+    }
+
+    private void SelectWindowCandidate(WindowCandidate candidate)
+    {
+        _selection = Rectangle.Intersect(candidate.Bounds, ClientRectangle);
+        _hasSelection = _selection.Width > 0 && _selection.Height > 0;
+        _annotations.Clear();
+        _selectedAnnotationIndex = -1;
+        _styleMenuVisible = false;
+        _hoverWindowCandidate = null;
+    }
+
+    private bool UpdateHoveredWindowCandidate(Point point)
+    {
+        if (_hasSelection || _isDraggingSelection || _isResizingSelection || _isAnnotating || _isEditingAnnotation)
+        {
+            if (_hoverWindowCandidate is null)
+            {
+                return false;
+            }
+
+            _hoverWindowCandidate = null;
+            return true;
+        }
+
+        var next = _windowCandidates.FirstOrDefault(candidate => candidate.Bounds.Contains(point));
+        if (Equals(next, _hoverWindowCandidate))
+        {
+            return false;
+        }
+
+        _hoverWindowCandidate = next;
+        return true;
+    }
+
+    private List<WindowCandidate> BuildWindowCandidates()
+    {
+        var candidates = new List<WindowCandidate>();
+        var clientBounds = new Rectangle(0, 0, _virtualBounds.Width, _virtualBounds.Height);
+
+        EnumWindows((hwnd, _) =>
+        {
+            if (!IsWindowCaptureCandidate(hwnd) || !TryGetWindowBounds(hwnd, out var screenBounds))
+            {
+                return true;
+            }
+
+            var candidate = new Rectangle(
+                screenBounds.Left - _virtualBounds.Left,
+                screenBounds.Top - _virtualBounds.Top,
+                screenBounds.Width,
+                screenBounds.Height);
+            candidate = Rectangle.Intersect(candidate, clientBounds);
+            if (candidate.Width < 32 || candidate.Height < 32)
+            {
+                return true;
+            }
+
+            if (!candidates.Any(existing => AreSimilarWindowBounds(existing.Bounds, candidate)))
+            {
+                candidates.Add(new WindowCandidate(hwnd, candidate));
+            }
+
+            return true;
+        }, IntPtr.Zero);
+
+        return candidates;
+    }
+
+    private static bool IsWindowCaptureCandidate(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !IsWindowVisible(hwnd) || IsIconic(hwnd) || IsWindowCloaked(hwnd))
+        {
+            return false;
+        }
+
+        var exStyle = GetWindowLong(hwnd, GwlExStyle);
+        if ((exStyle & WsExToolWindow) != 0)
+        {
+            return false;
+        }
+
+        var className = GetWindowClassName(hwnd);
+        return className is not "Progman"
+            and not "WorkerW"
+            and not "Shell_TrayWnd"
+            and not "NotifyIconOverflowWindow";
+    }
+
+    private static bool TryGetWindowBounds(IntPtr hwnd, out NativeRect bounds)
+    {
+        if (TryGetExtendedFrameBounds(hwnd, out bounds))
+        {
+            return true;
+        }
+
+        return GetWindowRect(hwnd, out bounds) && bounds.Width > 0 && bounds.Height > 0;
+    }
+
+    private static bool TryGetExtendedFrameBounds(IntPtr hwnd, out NativeRect bounds)
+    {
+        try
+        {
+            return DwmGetWindowAttributeRect(
+                hwnd,
+                DwmwaExtendedFrameBounds,
+                out bounds,
+                Marshal.SizeOf<NativeRect>()) == 0
+                && bounds.Width > 0
+                && bounds.Height > 0;
+        }
+        catch (DllNotFoundException)
+        {
+        }
+        catch (EntryPointNotFoundException)
+        {
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool IsWindowCloaked(IntPtr hwnd)
+    {
+        try
+        {
+            return DwmGetWindowAttributeInt(
+                hwnd,
+                DwmwaCloaked,
+                out var cloaked,
+                Marshal.SizeOf<int>()) == 0
+                && cloaked != 0;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    private static bool AreSimilarWindowBounds(Rectangle left, Rectangle right)
+    {
+        return Math.Abs(left.Left - right.Left) <= 2
+               && Math.Abs(left.Top - right.Top) <= 2
+               && Math.Abs(left.Right - right.Right) <= 2
+               && Math.Abs(left.Bottom - right.Bottom) <= 2;
+    }
+
+    private static string GetWindowClassName(IntPtr hwnd)
+    {
+        var className = new StringBuilder(128);
+        return GetClassName(hwnd, className, className.Capacity) > 0
+            ? className.ToString()
+            : string.Empty;
     }
 
     private void CancelSelection()
@@ -1067,14 +1318,57 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
 
     private void ShowTextEditor(Point point)
     {
-        var width = Math.Min(260, Math.Max(130, _selection.Right - point.X - 8));
-        var bounds = new Rectangle(point.X, point.Y, width, 34);
-        _textEditor.Bounds = bounds;
-        _textEditor.Text = string.Empty;
-        _textEditor.ForeColor = _strokeColor;
+        _editingTextAnnotationIndex = -1;
+        ConfigureTextEditor(point, string.Empty, _strokeColor, FontSizeFromStrokeWidth(_strokeWidth));
+    }
+
+    private bool BeginTextAnnotationEdit(Point point)
+    {
+        var hit = HitAnnotation(point);
+        if (hit is null || _annotations[hit.Index] is not TextAnnotation text)
+        {
+            return false;
+        }
+
+        _isAnnotating = false;
+        _activeStroke = null;
+        _isEditingAnnotation = false;
+        _activeAnnotationHandle = AnnotationEditHandle.None;
+        _annotationBeforeEdit = null;
+        _editingTextAnnotationIndex = hit.Index;
+        _selectedAnnotationIndex = hit.Index;
+        _activeTool = AnnotationTool.Text;
+        _strokeColor = text.Color;
+        _strokeWidth = StrokeWidthFromFontSize(text.FontSize);
+        _styleMenuVisible = true;
+        ConfigureTextEditor(text.Location, text.Text, text.Color, text.FontSize);
+        return true;
+    }
+
+    private void ConfigureTextEditor(Point location, string text, Color color, float fontSize)
+    {
+        _textEditor.Bounds = BuildTextEditorBounds(location, text, fontSize);
+        _textEditor.Text = text;
+        _textEditor.ForeColor = color;
         _textEditor.BackColor = Color.FromArgb(32, 32, 32);
+        _textEditor.Font = new Font("Segoe UI", fontSize, FontStyle.Bold, GraphicsUnit.Point);
         _textEditor.Visible = true;
         _textEditor.Focus();
+        _textEditor.SelectAll();
+    }
+
+    private Rectangle BuildTextEditorBounds(Point location, string text, float fontSize)
+    {
+        using var font = new Font("Segoe UI", fontSize, FontStyle.Bold, GraphicsUnit.Point);
+        var measured = Forms.TextRenderer.MeasureText(string.IsNullOrWhiteSpace(text) ? "Text" : text, font);
+        var maxWidth = Math.Max(80, Math.Min(320, _selection.Right - location.X - 8));
+        var width = Math.Max(80, Math.Min(maxWidth, Math.Max(130, measured.Width + 18)));
+        var height = Math.Max(34, measured.Height + 10);
+        var leftMax = Math.Max(_selection.Left, _selection.Right - width);
+        var topMax = Math.Max(_selection.Top, _selection.Bottom - height);
+        var left = Math.Clamp(location.X, _selection.Left, leftMax);
+        var top = Math.Clamp(location.Y, _selection.Top, topMax);
+        return new Rectangle(left, top, width, height);
     }
 
     private void TextEditor_KeyDown(object? sender, Forms.KeyEventArgs e)
@@ -1086,7 +1380,7 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         }
         else if (e.KeyCode == Forms.Keys.Escape)
         {
-            _textEditor.Visible = false;
+            CancelTextEditor();
             e.Handled = true;
         }
     }
@@ -1100,13 +1394,52 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
 
         var text = _textEditor.Text.Trim();
         var location = _textEditor.Location;
+        var editingIndex = _editingTextAnnotationIndex;
+        var fontSize = _textEditor.Font.SizeInPoints;
         _textEditor.Visible = false;
+        _editingTextAnnotationIndex = -1;
+
+        if (editingIndex >= 0)
+        {
+            if (editingIndex >= _annotations.Count || _annotations[editingIndex] is not TextAnnotation existing)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                _annotations.RemoveAt(editingIndex);
+                _selectedAnnotationIndex = -1;
+            }
+            else
+            {
+                _annotations[editingIndex] = existing with
+                {
+                    Location = location,
+                    Text = text,
+                    Color = _strokeColor,
+                    FontSize = fontSize
+                };
+                _selectedAnnotationIndex = editingIndex;
+            }
+
+            Invalidate();
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(text))
         {
-            _annotations.Add(new TextAnnotation(location, text, _strokeColor, 15f));
+            _annotations.Add(new TextAnnotation(location, text, _strokeColor, fontSize));
             _selectedAnnotationIndex = _annotations.Count - 1;
             Invalidate();
         }
+    }
+
+    private void CancelTextEditor()
+    {
+        _textEditor.Visible = false;
+        _editingTextAnnotationIndex = -1;
+        Invalidate();
     }
 
     private void DrawAnnotations(Graphics graphics)
@@ -1179,21 +1512,14 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         }
 
         var annotation = _annotations[_selectedAnnotationIndex];
+        if (annotation is not TextAnnotation)
+        {
+            return;
+        }
+
         using var outline = new Pen(Color.FromArgb(220, AccentColor), 1.6f) { DashStyle = DashStyle.Dash };
         using var fill = new SolidBrush(Color.White);
         using var edge = new Pen(AccentColor, 1.4f);
-
-        if (annotation is ArrowAnnotation arrow)
-        {
-            graphics.DrawLine(outline, arrow.Start, arrow.End);
-            foreach (var handle in new[] { HandleCircle(arrow.Start, 12), HandleCircle(arrow.End, 12) })
-            {
-                graphics.FillEllipse(fill, handle);
-                graphics.DrawEllipse(edge, handle);
-            }
-
-            return;
-        }
 
         var bounds = AnnotationBounds(annotation);
         if (bounds.IsEmpty)
@@ -1239,6 +1565,15 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
             graphics.FillEllipse(fill, bounds);
             graphics.DrawEllipse(edge, bounds);
         }
+    }
+
+    private static void DrawWindowCandidateFrame(Graphics graphics, Rectangle selection)
+    {
+        using var glowPen = new Pen(Color.FromArgb(120, AccentColor), 7f);
+        using var borderPen = new Pen(AccentColor, 2.5f);
+        var frame = Rectangle.FromLTRB(selection.Left, selection.Top, Math.Max(selection.Left, selection.Right - 1), Math.Max(selection.Top, selection.Bottom - 1));
+        graphics.DrawRectangle(glowPen, frame);
+        graphics.DrawRectangle(borderPen, frame);
     }
 
     private static IEnumerable<HandleRect> BuildHandleRects(Rectangle selection, int hitSize)
@@ -1382,55 +1717,85 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         switch (action)
         {
             case ToolbarAction.Pen:
-                graphics.DrawLine(pen, bounds.Left + 11, bounds.Bottom - 10, bounds.Right - 9, bounds.Top + 10);
-                graphics.FillEllipse(brush, bounds.Left + 9, bounds.Bottom - 11, 5, 5);
-                break;
-            case ToolbarAction.Rectangle:
-                graphics.DrawRectangle(pen, bounds.Left + 9, bounds.Top + 10, bounds.Width - 18, bounds.Height - 19);
-                break;
-            case ToolbarAction.Arrow:
-                using (var arrowCap = new AdjustableArrowCap(4, 5, true))
-                {
-                    pen.CustomEndCap = arrowCap;
-                    graphics.DrawLine(pen, bounds.Left + 10, bounds.Bottom - 10, bounds.Right - 9, bounds.Top + 10);
-                }
-                break;
-            case ToolbarAction.Text:
-                using (var font = new Font("Segoe UI", 16, FontStyle.Bold, GraphicsUnit.Point))
-                using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-                {
-                    graphics.DrawString("T", font, brush, bounds, format);
-                }
-                break;
-            case ToolbarAction.Undo:
-                graphics.DrawArc(pen, bounds.Left + 9, bounds.Top + 10, 18, 16, 30, 260);
+                graphics.DrawLine(pen, bounds.Left + 14, bounds.Bottom - 12, bounds.Right - 14, bounds.Top + 16);
+                graphics.DrawLine(pen, bounds.Right - 18, bounds.Top + 12, bounds.Right - 10, bounds.Top + 20);
                 graphics.DrawLines(pen, new[]
                 {
-                    new PointF(bounds.Left + 11, bounds.Top + 15),
-                    new PointF(bounds.Left + 8, bounds.Top + 9),
-                    new PointF(bounds.Left + 15, bounds.Top + 10)
+                    new PointF(bounds.Left + 14, bounds.Bottom - 12),
+                    new PointF(bounds.Left + 10, bounds.Bottom - 9),
+                    new PointF(bounds.Left + 13, bounds.Bottom - 16)
+                });
+                graphics.FillEllipse(brush, bounds.Left + 10.5f, bounds.Bottom - 12.5f, 3.5f, 3.5f);
+                break;
+            case ToolbarAction.Rectangle:
+                graphics.DrawRoundedRectangle(pen, new RectangleF(bounds.Left + 10, bounds.Top + 12, bounds.Width - 20, bounds.Height - 22), 4);
+                break;
+            case ToolbarAction.Arrow:
+                DrawLineArrowIcon(graphics, pen, new PointF(bounds.Left + 12, bounds.Bottom - 12), new PointF(bounds.Right - 11, bounds.Top + 11), 7f);
+                break;
+            case ToolbarAction.Text:
+                graphics.DrawLine(pen, bounds.Left + 12, bounds.Top + 13, bounds.Right - 12, bounds.Top + 13);
+                graphics.DrawLine(pen, cx, bounds.Top + 13, cx, bounds.Bottom - 12);
+                graphics.DrawLine(pen, cx - 6, bounds.Bottom - 12, cx + 6, bounds.Bottom - 12);
+                break;
+            case ToolbarAction.Undo:
+                graphics.DrawArc(pen, bounds.Left + 12, bounds.Top + 12, 20, 20, 35, 260);
+                graphics.DrawLines(pen, new[]
+                {
+                    new PointF(bounds.Left + 13, bounds.Top + 17),
+                    new PointF(bounds.Left + 10, bounds.Top + 11),
+                    new PointF(bounds.Left + 17, bounds.Top + 12)
                 });
                 break;
             case ToolbarAction.SaveImage:
-                graphics.DrawRectangle(pen, bounds.Left + 11, bounds.Top + 9, bounds.Width - 22, bounds.Height - 16);
-                graphics.DrawLine(pen, bounds.Left + 16, bounds.Top + 9, bounds.Left + 16, bounds.Top + 18);
-                graphics.DrawLine(pen, bounds.Right - 16, bounds.Top + 9, bounds.Right - 16, bounds.Top + 18);
-                graphics.DrawLine(pen, bounds.Left + 17, bounds.Bottom - 15, bounds.Right - 17, bounds.Bottom - 15);
-                graphics.FillRectangle(brush, bounds.Left + 17, bounds.Top + 15, bounds.Width - 34, 4);
+                graphics.DrawLine(pen, cx, bounds.Top + 10, cx, bounds.Bottom - 18);
+                graphics.DrawLines(pen, new[]
+                {
+                    new PointF(cx - 6, bounds.Bottom - 23),
+                    new PointF(cx, bounds.Bottom - 17),
+                    new PointF(cx + 6, bounds.Bottom - 23)
+                });
+                graphics.DrawLines(pen, new[]
+                {
+                    new PointF(bounds.Left + 12, bounds.Bottom - 12),
+                    new PointF(bounds.Left + 12, bounds.Bottom - 9),
+                    new PointF(bounds.Right - 12, bounds.Bottom - 9),
+                    new PointF(bounds.Right - 12, bounds.Bottom - 12)
+                });
                 break;
             case ToolbarAction.Cancel:
-                graphics.DrawLine(pen, bounds.Left + 11, bounds.Top + 11, bounds.Right - 11, bounds.Bottom - 11);
-                graphics.DrawLine(pen, bounds.Right - 11, bounds.Top + 11, bounds.Left + 11, bounds.Bottom - 11);
+                graphics.DrawLine(pen, bounds.Left + 13, bounds.Top + 13, bounds.Right - 13, bounds.Bottom - 13);
+                graphics.DrawLine(pen, bounds.Right - 13, bounds.Top + 13, bounds.Left + 13, bounds.Bottom - 13);
                 break;
             case ToolbarAction.Confirm:
                 graphics.DrawLines(pen, new[]
                 {
-                    new PointF(bounds.Left + 9, cy),
-                    new PointF(cx - 2, bounds.Bottom - 10),
-                    new PointF(bounds.Right - 8, bounds.Top + 10)
+                    new PointF(bounds.Left + 11, cy + 1),
+                    new PointF(cx - 2, bounds.Bottom - 12),
+                    new PointF(bounds.Right - 10, bounds.Top + 12)
                 });
                 break;
         }
+    }
+
+    private static void DrawLineArrowIcon(Graphics graphics, Pen pen, PointF start, PointF end, float headSize)
+    {
+        graphics.DrawLine(pen, start, end);
+        DrawArrowHead(graphics, pen, start, end, headSize);
+    }
+
+    private static void DrawArrowHead(Graphics graphics, Pen pen, PointF start, PointF end, float size)
+    {
+        var angle = Math.Atan2(end.Y - start.Y, end.X - start.X);
+        const double spread = Math.PI / 7d;
+        var left = new PointF(
+            end.X - (float)(Math.Cos(angle - spread) * size),
+            end.Y - (float)(Math.Sin(angle - spread) * size));
+        var right = new PointF(
+            end.X - (float)(Math.Cos(angle + spread) * size),
+            end.Y - (float)(Math.Sin(angle + spread) * size));
+        graphics.DrawLine(pen, end, left);
+        graphics.DrawLine(pen, end, right);
     }
 
     private void DrawStyleMenu(Graphics graphics, Rectangle selection)
@@ -1611,6 +1976,7 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
     private sealed record RectangleAnnotation(Rectangle Bounds, Color Color, float Width) : Annotation;
     private sealed record ArrowAnnotation(Point Start, Point End, Color Color, float Width) : Annotation;
     private sealed record TextAnnotation(Point Location, string Text, Color Color, float FontSize) : Annotation;
+    private sealed record WindowCandidate(IntPtr Handle, Rectangle Bounds);
     private sealed record ToolbarSpec(ToolbarAction Action, bool Active, bool Primary, bool HasStyle);
     private sealed record ToolbarButton(ToolbarAction Action, RectangleF Bounds);
     private sealed record StyleSwatch(Color Color, RectangleF Bounds);
@@ -1618,6 +1984,45 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
     private sealed record HandleRect(ResizeHandle Handle, RectangleF Bounds);
     private sealed record AnnotationHandleRect(AnnotationEditHandle Handle, RectangleF Bounds);
     private sealed record AnnotationHit(int Index, AnnotationEditHandle Handle);
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect lpRect);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")]
+    private static extern int DwmGetWindowAttributeRect(IntPtr hwnd, int dwAttribute, out NativeRect pvAttribute, int cbAttribute);
+
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")]
+    private static extern int DwmGetWindowAttributeInt(IntPtr hwnd, int dwAttribute, out int pvAttribute, int cbAttribute);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+
+        public int Width => Right - Left;
+
+        public int Height => Bottom - Top;
+    }
 
     private enum ToolbarAction
     {

@@ -21,6 +21,7 @@ public sealed class OverlaySettings : ObservableObject
     private double _verticalWidth = 132;
     private double _verticalHeight = 292;
     private bool _isClickThroughEnabled;
+    private bool _onlyShowInFullscreen = true;
 
     public OverlaySettings()
     {
@@ -169,6 +170,12 @@ public sealed class OverlaySettings : ObservableObject
         set => SetProperty(ref _isClickThroughEnabled, value);
     }
 
+    public bool OnlyShowInFullscreen
+    {
+        get => _onlyShowInFullscreen;
+        set => SetProperty(ref _onlyShowInFullscreen, value);
+    }
+
     public MediaBrush BackgroundBrush
     {
         get
@@ -242,6 +249,7 @@ public sealed class OverlaySettings : ObservableObject
         VerticalWidth = 132;
         VerticalHeight = 292;
         IsClickThroughEnabled = false;
+        OnlyShowInFullscreen = true;
         ApplyMetricSettings(null);
     }
 

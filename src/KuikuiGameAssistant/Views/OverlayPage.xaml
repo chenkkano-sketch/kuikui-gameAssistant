@@ -60,6 +60,11 @@
                                   Checked="ClickThroughToggle_Changed"
                                   Unchecked="ClickThroughToggle_Changed"
                                   Margin="0,12,0,0" />
+                        <CheckBox Content="仅全屏/无边框全屏游戏时显示"
+                                  IsChecked="{Binding OnlyShowInFullscreen, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  Checked="FullscreenVisibilityToggle_Changed"
+                                  Unchecked="FullscreenVisibilityToggle_Changed"
+                                  Margin="0,10,0,0" />
                     </StackPanel>
                 </Border>
 

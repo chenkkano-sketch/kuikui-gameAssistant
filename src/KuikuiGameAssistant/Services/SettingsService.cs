@@ -105,6 +105,7 @@ public sealed class SettingsService
         settings.VerticalWidth = persisted.VerticalWidth;
         settings.VerticalHeight = persisted.VerticalHeight;
         settings.IsClickThroughEnabled = persisted.IsClickThroughEnabled;
+        settings.OnlyShowInFullscreen = persisted.OnlyShowInFullscreen ?? true;
         if (persisted.Metrics is null)
         {
             settings.HorizontalWidth = Math.Max(settings.HorizontalWidth, 660);
@@ -135,6 +136,7 @@ public sealed class SettingsService
             VerticalWidth = settings.VerticalWidth,
             VerticalHeight = settings.VerticalHeight,
             IsClickThroughEnabled = settings.IsClickThroughEnabled,
+            OnlyShowInFullscreen = settings.OnlyShowInFullscreen,
             Metrics = settings.SnapshotMetrics()
                 .Select(x => new PersistedOverlayMetric
                 {
@@ -221,6 +223,7 @@ public sealed class SettingsService
         public double VerticalWidth { get; set; }
         public double VerticalHeight { get; set; }
         public bool IsClickThroughEnabled { get; set; }
+        public bool? OnlyShowInFullscreen { get; set; }
         public IReadOnlyList<PersistedOverlayMetric>? Metrics { get; set; }
     }
 

@@ -276,7 +276,7 @@ public partial class MainWindow : Window
 
     private void ToggleOverlay()
     {
-        if (_overlayWindow is { IsVisible: true })
+        if (_overlayWindow is not null)
         {
             _overlayWindow.Close();
             return;

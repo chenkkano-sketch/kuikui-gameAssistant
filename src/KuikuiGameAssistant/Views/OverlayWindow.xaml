@@ -9,6 +9,7 @@
         AllowsTransparency="True"
         Background="Transparent"
         Topmost="True"
+        ShowActivated="False"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterScreen">
     <Border x:Name="RootBorder"

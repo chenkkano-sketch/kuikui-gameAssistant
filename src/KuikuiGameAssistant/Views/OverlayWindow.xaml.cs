@@ -2,10 +2,12 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using KuikuiGameAssistant.Models;
 using KuikuiGameAssistant.Services;
 using KuikuiGameAssistant.ViewModels;
@@ -18,17 +20,31 @@ public partial class OverlayWindow : Window
 {
     private const int GwlExStyle = -20;
     private const int WsExTransparent = 0x00000020;
+    private const int WsExToolWindow = 0x00000080;
+    private const int WsExNoActivate = 0x08000000;
     private const int WmNcHitTest = 0x0084;
+    private const int DwmwaExtendedFrameBounds = 9;
+    private const int DwmwaCloaked = 14;
+    private const uint MonitorDefaultToNearest = 2;
+    private const int FullscreenTolerancePx = 2;
     private static readonly IntPtr HtTransparent = new(-1);
     private readonly TelemetryService _telemetry;
     private readonly OverlaySettings _settings;
+    private readonly DispatcherTimer _fullscreenVisibilityTimer;
     private HwndSource? _source;
+    private bool _isHiddenByFullscreenFilter;
+    private bool _isClosing;
 
     public OverlayWindow(TelemetryService telemetry, OverlaySettings settings)
     {
         InitializeComponent();
         _telemetry = telemetry;
         _settings = settings;
+        _fullscreenVisibilityTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _fullscreenVisibilityTimer.Tick += (_, _) => UpdateFullscreenVisibility();
         DataContext = this;
 
         RebuildMetrics();
@@ -47,7 +63,14 @@ public partial class OverlayWindow : Window
         base.OnSourceInitialized(e);
         _source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
         _source?.AddHook(WndProc);
-        ApplyClickThrough();
+        ApplyNativeWindowStyles();
+        ConfigureFullscreenVisibilityTimer();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        _isClosing = true;
+        base.OnClosing(e);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -55,6 +78,7 @@ public partial class OverlayWindow : Window
         _telemetry.SnapshotUpdated -= Telemetry_SnapshotUpdated;
         _settings.PropertyChanged -= Settings_PropertyChanged;
         _settings.Metrics.CollectionChanged -= Metrics_CollectionChanged;
+        _fullscreenVisibilityTimer.Stop();
         _source?.RemoveHook(WndProc);
         ClearMetrics();
         base.OnClosed(e);
@@ -135,7 +159,8 @@ public partial class OverlayWindow : Window
             : new Thickness(6, 5, 6, 5);
         RootBorder.Background = _settings.BackgroundBrush;
         RootBorder.IsHitTestVisible = !_settings.IsClickThroughEnabled;
-        ApplyClickThrough();
+        ApplyNativeWindowStyles();
+        ConfigureFullscreenVisibilityTimer();
 
         foreach (var metric in Metrics)
         {
@@ -165,6 +190,66 @@ public partial class OverlayWindow : Window
         Metrics.Clear();
     }
 
+    private void ConfigureFullscreenVisibilityTimer()
+    {
+        if (_source is null || _isClosing)
+        {
+            return;
+        }
+
+        if (_settings.OnlyShowInFullscreen)
+        {
+            if (!_fullscreenVisibilityTimer.IsEnabled)
+            {
+                _fullscreenVisibilityTimer.Start();
+            }
+
+            UpdateFullscreenVisibility();
+            return;
+        }
+
+        _fullscreenVisibilityTimer.Stop();
+        ShowAfterFullscreenFilter();
+    }
+
+    private void UpdateFullscreenVisibility()
+    {
+        if (_isClosing)
+        {
+            return;
+        }
+
+        if (!_settings.OnlyShowInFullscreen || IsForegroundFullscreenWindow())
+        {
+            ShowAfterFullscreenFilter();
+            return;
+        }
+
+        HideForFullscreenFilter();
+    }
+
+    private void HideForFullscreenFilter()
+    {
+        _isHiddenByFullscreenFilter = true;
+        if (IsVisible)
+        {
+            Hide();
+        }
+    }
+
+    private void ShowAfterFullscreenFilter()
+    {
+        if (!_isHiddenByFullscreenFilter)
+        {
+            return;
+        }
+
+        _isHiddenByFullscreenFilter = false;
+        Show();
+        Topmost = true;
+        ApplyNativeWindowStyles();
+    }
+
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         if (msg == WmNcHitTest && _settings.IsClickThroughEnabled)
@@ -176,7 +261,7 @@ public partial class OverlayWindow : Window
         return IntPtr.Zero;
     }
 
-    private void ApplyClickThrough()
+    private void ApplyNativeWindowStyles()
     {
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd == IntPtr.Zero)
@@ -185,9 +270,10 @@ public partial class OverlayWindow : Window
         }
 
         var exStyle = GetWindowLong(hwnd, GwlExStyle);
-        var nextStyle = _settings.IsClickThroughEnabled
-            ? exStyle | WsExTransparent
-            : exStyle & ~WsExTransparent;
+        var nextStyle = exStyle | WsExToolWindow | WsExNoActivate;
+        nextStyle = _settings.IsClickThroughEnabled
+            ? nextStyle | WsExTransparent
+            : nextStyle & ~WsExTransparent;
 
         if (nextStyle != exStyle)
         {
@@ -195,11 +281,173 @@ public partial class OverlayWindow : Window
         }
     }
 
+    private bool IsForegroundFullscreenWindow()
+    {
+        var foreground = GetForegroundWindow();
+        if (foreground == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var overlayHandle = new WindowInteropHelper(this).Handle;
+        if (foreground == overlayHandle)
+        {
+            return false;
+        }
+
+        if (!IsWindowVisible(foreground) || IsIconic(foreground) || IsShellWindow(foreground) || IsWindowCloaked(foreground))
+        {
+            return false;
+        }
+
+        var monitor = MonitorFromWindow(foreground, MonitorDefaultToNearest);
+        if (monitor == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var monitorInfo = new MonitorInfo();
+        monitorInfo.Size = Marshal.SizeOf<MonitorInfo>();
+        if (!GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return false;
+        }
+
+        if (!TryGetWindowBounds(foreground, out var bounds))
+        {
+            return false;
+        }
+
+        return CoversMonitor(bounds, monitorInfo.Monitor);
+    }
+
+    private static bool TryGetWindowBounds(IntPtr hwnd, out NativeRect bounds)
+    {
+        if (TryGetExtendedFrameBounds(hwnd, out bounds))
+        {
+            return true;
+        }
+
+        return GetWindowRect(hwnd, out bounds);
+    }
+
+    private static bool TryGetExtendedFrameBounds(IntPtr hwnd, out NativeRect bounds)
+    {
+        try
+        {
+            return DwmGetWindowAttributeRect(
+                hwnd,
+                DwmwaExtendedFrameBounds,
+                out bounds,
+                Marshal.SizeOf<NativeRect>()) == 0
+                && bounds.Width > 0
+                && bounds.Height > 0;
+        }
+        catch (DllNotFoundException)
+        {
+        }
+        catch (EntryPointNotFoundException)
+        {
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool IsWindowCloaked(IntPtr hwnd)
+    {
+        try
+        {
+            return DwmGetWindowAttributeInt(
+                hwnd,
+                DwmwaCloaked,
+                out var cloaked,
+                Marshal.SizeOf<int>()) == 0
+                && cloaked != 0;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    private static bool CoversMonitor(NativeRect window, NativeRect monitor)
+    {
+        return window.Left <= monitor.Left + FullscreenTolerancePx
+               && window.Top <= monitor.Top + FullscreenTolerancePx
+               && window.Right >= monitor.Right - FullscreenTolerancePx
+               && window.Bottom >= monitor.Bottom - FullscreenTolerancePx;
+    }
+
+    private static bool IsShellWindow(IntPtr hwnd)
+    {
+        var className = new StringBuilder(128);
+        if (GetClassName(hwnd, className, className.Capacity) <= 0)
+        {
+            return false;
+        }
+
+        return className.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd";
+    }
+
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
     [DllImport("user32.dll")]
     private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect lpRect);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint dwFlags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo lpmi);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")]
+    private static extern int DwmGetWindowAttributeRect(IntPtr hwnd, int dwAttribute, out NativeRect pvAttribute, int cbAttribute);
+
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")]
+    private static extern int DwmGetWindowAttributeInt(IntPtr hwnd, int dwAttribute, out int pvAttribute, int cbAttribute);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public NativeRect Monitor;
+        public NativeRect WorkArea;
+        public uint Flags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+
+        public int Width => Right - Left;
+
+        public int Height => Bottom - Top;
+    }
 }
 
 public sealed class OverlayMetricDisplayItem : ObservableObject, IDisposable

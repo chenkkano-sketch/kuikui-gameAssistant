@@ -11,12 +11,12 @@
 
 ## 下载
 
-当前正式版本：`v1.0.3`
+当前正式版本：`v1.0.4`
 
 前往 [GitHub Releases](https://github.com/chenkkano-sketch/kuikui-gameAssistant/releases/latest) 下载：
 
-- 安装版：`KuikuiGameAssistant-1.0.3-setup.exe`
-- 便携版：`KuikuiGameAssistant-1.0.3-win-x64-portable.zip`
+- 安装版：`KuikuiGameAssistant-1.0.4-setup.exe`
+- 便携版：`KuikuiGameAssistant-1.0.4-win-x64-portable.zip`
 
 固定直链：
 
@@ -89,19 +89,19 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 生成安装版和便携版：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.3
+.\scripts\package.ps1 -Version 1.0.4
 ```
 
 只生成便携 zip：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.3 -SkipInstaller
+.\scripts\package.ps1 -Version 1.0.4 -SkipInstaller
 ```
 
 输出文件：
 
-- `artifacts\KuikuiGameAssistant-1.0.3-setup.exe`
-- `artifacts\KuikuiGameAssistant-1.0.3-win-x64-portable.zip`
+- `artifacts\KuikuiGameAssistant-1.0.4-setup.exe`
+- `artifacts\KuikuiGameAssistant-1.0.4-win-x64-portable.zip`
 - `artifacts\KuikuiGameAssistant-setup.exe`
 - `artifacts\KuikuiGameAssistant-win-x64-portable.zip`
 
@@ -112,9 +112,9 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 推送 tag 即可触发正式发布：
 
 ```powershell
-git tag v1.0.3
+git tag v1.0.4
 git push origin main
-git push origin v1.0.3
+git push origin v1.0.4
 ```
 
 GitHub Actions 会构建并上传版本号文件和固定直链文件。Release 内容会注明下载版本、安装版文件名、便携版文件名和 latest/download 固定链接。
