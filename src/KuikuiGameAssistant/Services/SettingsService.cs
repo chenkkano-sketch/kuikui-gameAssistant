@@ -104,6 +104,7 @@ public sealed class SettingsService
         settings.HorizontalHeight = persisted.HorizontalHeight;
         settings.VerticalWidth = persisted.VerticalWidth;
         settings.VerticalHeight = persisted.VerticalHeight;
+        settings.Placement = persisted.Placement ?? OverlayPlacement.Center;
         settings.IsClickThroughEnabled = persisted.IsClickThroughEnabled;
         settings.OnlyShowInFullscreen = persisted.OnlyShowInFullscreen ?? true;
         if (persisted.Metrics is null)
@@ -135,6 +136,7 @@ public sealed class SettingsService
             HorizontalHeight = settings.HorizontalHeight,
             VerticalWidth = settings.VerticalWidth,
             VerticalHeight = settings.VerticalHeight,
+            Placement = settings.Placement,
             IsClickThroughEnabled = settings.IsClickThroughEnabled,
             OnlyShowInFullscreen = settings.OnlyShowInFullscreen,
             Metrics = settings.SnapshotMetrics()
@@ -222,6 +224,7 @@ public sealed class SettingsService
         public double HorizontalHeight { get; set; }
         public double VerticalWidth { get; set; }
         public double VerticalHeight { get; set; }
+        public OverlayPlacement? Placement { get; set; }
         public bool IsClickThroughEnabled { get; set; }
         public bool? OnlyShowInFullscreen { get; set; }
         public IReadOnlyList<PersistedOverlayMetric>? Metrics { get; set; }

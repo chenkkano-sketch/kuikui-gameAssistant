@@ -20,6 +20,7 @@ public sealed class OverlaySettings : ObservableObject
     private double _horizontalHeight = 58;
     private double _verticalWidth = 132;
     private double _verticalHeight = 292;
+    private OverlayPlacement _placement = OverlayPlacement.Center;
     private bool _isClickThroughEnabled;
     private bool _onlyShowInFullscreen = true;
 
@@ -170,6 +171,18 @@ public sealed class OverlaySettings : ObservableObject
         set => SetProperty(ref _isClickThroughEnabled, value);
     }
 
+    public OverlayPlacement Placement
+    {
+        get => _placement;
+        set
+        {
+            if (SetProperty(ref _placement, value))
+            {
+                OnPropertyChanged(nameof(PlacementText));
+            }
+        }
+    }
+
     public bool OnlyShowInFullscreen
     {
         get => _onlyShowInFullscreen;
@@ -205,6 +218,20 @@ public sealed class OverlaySettings : ObservableObject
     public string VerticalSizeText => $"{VerticalWidth:0} x {VerticalHeight:0}";
 
     public string CurrentSizeText => $"{CurrentWidth:0} x {CurrentHeight:0}";
+
+    public string PlacementText => Placement switch
+    {
+        OverlayPlacement.TopLeft => "左上",
+        OverlayPlacement.Top => "上方",
+        OverlayPlacement.TopRight => "右上",
+        OverlayPlacement.Left => "左侧",
+        OverlayPlacement.Center => "居中",
+        OverlayPlacement.Right => "右侧",
+        OverlayPlacement.BottomLeft => "左下",
+        OverlayPlacement.Bottom => "下方",
+        OverlayPlacement.BottomRight => "右下",
+        _ => "居中"
+    };
 
     public string PrimaryResolutionText => $"{(int)SystemParameters.PrimaryScreenWidth} x {(int)SystemParameters.PrimaryScreenHeight}";
 
@@ -248,6 +275,7 @@ public sealed class OverlaySettings : ObservableObject
         HorizontalHeight = 58;
         VerticalWidth = 132;
         VerticalHeight = 292;
+        Placement = OverlayPlacement.Center;
         IsClickThroughEnabled = false;
         OnlyShowInFullscreen = true;
         ApplyMetricSettings(null);

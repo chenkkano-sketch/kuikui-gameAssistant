@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using KuikuiGameAssistant.Models;
+using KuikuiGameAssistant.Services;
 using KuikuiGameAssistant.ViewModels;
 
 namespace KuikuiGameAssistant.Views;
@@ -10,6 +11,7 @@ namespace KuikuiGameAssistant.Views;
 public partial class OverlayPage : System.Windows.Controls.UserControl
 {
     private readonly OverlaySettings _settings;
+    private bool _isApplyingBatch;
 
     public OverlayPage(OverlaySettings settings)
     {
@@ -25,6 +27,16 @@ public partial class OverlayPage : System.Windows.Controls.UserControl
         if (e.PropertyName == nameof(OverlaySettings.LayoutMode))
         {
             ApplyLayoutState();
+        }
+
+        if (e.PropertyName == nameof(OverlaySettings.Placement))
+        {
+            ApplyPlacementState();
+        }
+
+        if (!_isApplyingBatch && IsLoaded && ShouldSaveOnPropertyChanged(e.PropertyName))
+        {
+            SaveSettings();
         }
     }
 
@@ -70,6 +82,16 @@ public partial class OverlayPage : System.Windows.Controls.UserControl
         }
     }
 
+    private void PlacementButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: OverlayPlacement placement })
+        {
+            _settings.Placement = placement;
+            ApplyPlacementState();
+            SaveSettings();
+        }
+    }
+
     private void BackgroundSwatch_Click(object sender, RoutedEventArgs e)
     {
         _settings.BackgroundColor = ColorFromTag(sender);
@@ -90,9 +112,18 @@ public partial class OverlayPage : System.Windows.Controls.UserControl
 
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
-        _settings.Reset();
-        ApplyLayoutState();
-        SaveSettings();
+        _isApplyingBatch = true;
+        try
+        {
+            _settings.Reset();
+            ApplyLayoutState();
+            ApplyPlacementState();
+            SaveSettings();
+        }
+        finally
+        {
+            _isApplyingBatch = false;
+        }
     }
 
     private void ApplyLayoutState()
@@ -101,6 +132,60 @@ public partial class OverlayPage : System.Windows.Controls.UserControl
         VerticalLayoutRadio.IsChecked = _settings.LayoutMode == OverlayLayoutMode.Vertical;
         PreviewHorizontalPanel.Visibility = _settings.LayoutMode == OverlayLayoutMode.Horizontal ? Visibility.Visible : Visibility.Collapsed;
         PreviewVerticalPanel.Visibility = _settings.LayoutMode == OverlayLayoutMode.Vertical ? Visibility.Visible : Visibility.Collapsed;
+        ApplyPlacementState();
+    }
+
+    private void ApplyPlacementState()
+    {
+        foreach (var button in PlacementButtons())
+        {
+            var isSelected = button.Tag is OverlayPlacement placement && placement == _settings.Placement;
+            button.FontWeight = isSelected ? FontWeights.SemiBold : FontWeights.Normal;
+            button.SetResourceReference(System.Windows.Controls.Control.BackgroundProperty, isSelected ? "AccentSoftBrush" : "InputBackgroundBrush");
+            button.SetResourceReference(System.Windows.Controls.Control.BorderBrushProperty, isSelected ? "AccentBrush" : "BorderBrush");
+            button.SetResourceReference(System.Windows.Controls.Control.ForegroundProperty, isSelected ? "AccentBrush" : "TextPrimaryBrush");
+        }
+
+        PreviewOverlay.HorizontalAlignment = _settings.Placement switch
+        {
+            OverlayPlacement.TopLeft or OverlayPlacement.Left or OverlayPlacement.BottomLeft => System.Windows.HorizontalAlignment.Left,
+            OverlayPlacement.TopRight or OverlayPlacement.Right or OverlayPlacement.BottomRight => System.Windows.HorizontalAlignment.Right,
+            _ => System.Windows.HorizontalAlignment.Center
+        };
+
+        PreviewOverlay.VerticalAlignment = _settings.Placement switch
+        {
+            OverlayPlacement.TopLeft or OverlayPlacement.Top or OverlayPlacement.TopRight => System.Windows.VerticalAlignment.Top,
+            OverlayPlacement.BottomLeft or OverlayPlacement.Bottom or OverlayPlacement.BottomRight => System.Windows.VerticalAlignment.Bottom,
+            _ => System.Windows.VerticalAlignment.Center
+        };
+    }
+
+    private System.Windows.Controls.Button[] PlacementButtons()
+    {
+        return
+        [
+            PlacementTopLeftButton,
+            PlacementTopButton,
+            PlacementTopRightButton,
+            PlacementLeftButton,
+            PlacementCenterButton,
+            PlacementRightButton,
+            PlacementBottomLeftButton,
+            PlacementBottomButton,
+            PlacementBottomRightButton
+        ];
+    }
+
+    private static bool ShouldSaveOnPropertyChanged(string? propertyName)
+    {
+        return propertyName is nameof(OverlaySettings.BackgroundOpacity)
+            or nameof(OverlaySettings.FontSize)
+            or nameof(OverlaySettings.LabelFontSize)
+            or nameof(OverlaySettings.HorizontalWidth)
+            or nameof(OverlaySettings.HorizontalHeight)
+            or nameof(OverlaySettings.VerticalWidth)
+            or nameof(OverlaySettings.VerticalHeight);
     }
 
     private static System.Windows.Media.Color ColorFromTag(object sender)
@@ -117,5 +202,6 @@ public partial class OverlayPage : System.Windows.Controls.UserControl
     private static void SaveSettings()
     {
         App.Settings.Save(App.OverlaySettings);
+        ToastService.ShowSettingsSaved();
     }
 }

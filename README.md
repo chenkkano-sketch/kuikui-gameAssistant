@@ -11,12 +11,12 @@
 
 ## 下载
 
-当前正式版本：`v1.0.4`
+当前正式版本：`v1.0.5`
 
 前往 [GitHub Releases](https://github.com/chenkkano-sketch/kuikui-gameAssistant/releases/latest) 下载：
 
-- 安装版：`KuikuiGameAssistant-1.0.4-setup.exe`
-- 便携版：`KuikuiGameAssistant-1.0.4-win-x64-portable.zip`
+- 安装版：`KuikuiGameAssistant-1.0.5-setup.exe`
+- 便携版：`KuikuiGameAssistant-1.0.5-win-x64-portable.zip`
 
 固定直链：
 
@@ -29,7 +29,7 @@
 
 - 实时监控：CPU / GPU 负载、温度、内存占用和历史曲线。
 - FPS 采集：自带 KuikuiTelemetryService 后台引擎，安装后自动以服务方式采集游戏帧率。
-- 游戏悬浮窗：透明置顶、可拖动、可调颜色、布局、字号和尺寸。
+- 游戏悬浮窗：透明置顶、九宫格定位、可调颜色、布局、字号和尺寸。
 - 区域截图：拖拽选区、标注、取色、放大镜、快捷复制到剪切板。
 - MP4 录屏：基于 ScreenRecorderLib，支持 30 / 60 / 120 FPS、码率、系统声音、麦克风和鼠标指针。
 - 游戏滤镜：支持亮度、对比度、灰度、饱和度、色调、屏幕暗角和预设存档。
@@ -43,7 +43,7 @@
 - 左键拖拽选择区域。
 - 左键单击空选区自动圈选全屏。
 - 左键双击选区完成截图并复制到剪切板。
-- 右键直接取消。
+- 右键取消当前选中或编辑状态；未选择区域时退出截图。
 - `Enter` 完成并复制到剪切板。
 - `Esc` 取消。
 - `Ctrl+Z` 撤销上一个标注。
@@ -89,19 +89,19 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 生成安装版和便携版：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.4
+.\scripts\package.ps1 -Version 1.0.5
 ```
 
 只生成便携 zip：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.4 -SkipInstaller
+.\scripts\package.ps1 -Version 1.0.5 -SkipInstaller
 ```
 
 输出文件：
 
-- `artifacts\KuikuiGameAssistant-1.0.4-setup.exe`
-- `artifacts\KuikuiGameAssistant-1.0.4-win-x64-portable.zip`
+- `artifacts\KuikuiGameAssistant-1.0.5-setup.exe`
+- `artifacts\KuikuiGameAssistant-1.0.5-win-x64-portable.zip`
 - `artifacts\KuikuiGameAssistant-setup.exe`
 - `artifacts\KuikuiGameAssistant-win-x64-portable.zip`
 
@@ -112,9 +112,9 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 推送 tag 即可触发正式发布：
 
 ```powershell
-git tag v1.0.4
+git tag v1.0.5
 git push origin main
-git push origin v1.0.4
+git push origin v1.0.5
 ```
 
 GitHub Actions 会构建并上传版本号文件和固定直链文件。Release 内容会注明下载版本、安装版文件名、便携版文件名和 latest/download 固定链接。

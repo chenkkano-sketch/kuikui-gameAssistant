@@ -107,5 +107,6 @@ public partial class GameFilterPage : WpfUserControl
     private static void SaveSettings()
     {
         App.Settings.Save(App.OverlaySettings);
+        ToastService.ShowSettingsSaved();
     }
 }

@@ -31,6 +31,7 @@ public partial class DashboardPage : System.Windows.Controls.UserControl
         if (_viewModel.AddSelectedModule())
         {
             App.Settings.Save(App.OverlaySettings);
+            ToastService.ShowSettingsSaved();
             _telemetry.RefreshNow();
         }
     }
@@ -45,6 +46,7 @@ public partial class DashboardPage : System.Windows.Controls.UserControl
         if (_viewModel.RemoveModule(moduleId))
         {
             App.Settings.Save(App.OverlaySettings);
+            ToastService.ShowSettingsSaved();
         }
     }
 
@@ -81,6 +83,7 @@ public partial class DashboardPage : System.Windows.Controls.UserControl
 
         comboBox.GetBindingExpression(Selector.SelectedValueProperty)?.UpdateSource();
         App.Settings.Save(App.OverlaySettings);
+        ToastService.ShowSettingsSaved();
     }
 
     private void FpsAssist_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -90,6 +93,7 @@ public partial class DashboardPage : System.Windows.Controls.UserControl
             case DashboardFpsAction.EnablePresentMon:
                 _telemetry.EnablePresentMon();
                 App.Settings.Save(App.OverlaySettings);
+                ToastService.ShowSettingsSaved();
                 break;
             case DashboardFpsAction.RestartPresentMon:
                 _telemetry.RestartPresentMon();
@@ -135,6 +139,7 @@ public partial class DashboardPage : System.Windows.Controls.UserControl
         App.Settings.AppSettings.PresentMonPath = dialog.FileName;
         App.Settings.AppSettings.EnablePresentMon = true;
         App.Settings.Save(App.OverlaySettings);
+        ToastService.ShowSettingsSaved();
         App.Telemetry.RestartPresentMon();
     }
 

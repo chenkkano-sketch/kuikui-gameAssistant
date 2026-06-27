@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using System.Runtime.InteropServices;
 using KuikuiGameAssistant.Models;
 using KuikuiGameAssistant.Services;
@@ -23,6 +25,7 @@ public partial class MainWindow : Window
     private readonly GameFilterPage _filterPage;
     private readonly SettingsPage _settingsPage;
     private readonly HotkeyService _hotkeys = new();
+    private readonly DispatcherTimer _toastHideTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
     private Forms.NotifyIcon? _notifyIcon;
     private Drawing.Icon? _trayIcon;
     private OverlayWindow? _overlayWindow;
@@ -41,7 +44,9 @@ public partial class MainWindow : Window
         _settingsPage = new SettingsPage(App.Settings.AppSettings, App.Updates);
         App.Settings.AppSettings.PropertyChanged += AppSettings_PropertyChanged;
         AppThemeService.ThemeApplied += AppThemeService_ThemeApplied;
+        ToastService.ToastRequested += ToastService_ToastRequested;
         StateChanged += MainWindow_StateChanged;
+        _toastHideTimer.Tick += ToastHideTimer_Tick;
 
         Navigate("Dashboard");
         UpdateWindowFrameShape();
@@ -92,8 +97,11 @@ public partial class MainWindow : Window
         _hotkeys.Dispose();
         _notifyIcon?.Dispose();
         _trayIcon?.Dispose();
+        _toastHideTimer.Stop();
+        _toastHideTimer.Tick -= ToastHideTimer_Tick;
         App.Settings.AppSettings.PropertyChanged -= AppSettings_PropertyChanged;
         AppThemeService.ThemeApplied -= AppThemeService_ThemeApplied;
+        ToastService.ToastRequested -= ToastService_ToastRequested;
         StateChanged -= MainWindow_StateChanged;
         base.OnClosed(e);
     }
@@ -395,6 +403,73 @@ public partial class MainWindow : Window
         }
 
         App.Settings.Save(App.OverlaySettings);
+        if (ShouldShowSettingsToast(e.PropertyName))
+        {
+            ToastService.ShowSettingsSaved();
+        }
+    }
+
+    private static bool ShouldShowSettingsToast(string? propertyName)
+    {
+        return propertyName is not nameof(AppSettings.LastUpdateCheckUtc)
+            and not nameof(AppSettings.MemoryOptimizedDefaultsApplied);
+    }
+
+    private void ToastService_ToastRequested(object? sender, ToastRequestedEventArgs e)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            ShowToast(e.Message);
+            return;
+        }
+
+        _ = Dispatcher.BeginInvoke(() => ShowToast(e.Message));
+    }
+
+    private void ShowToast(string message)
+    {
+        ToastText.Text = message;
+        ToastHost.Visibility = Visibility.Visible;
+        _toastHideTimer.Stop();
+
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        ToastHost.BeginAnimation(
+            OpacityProperty,
+            new DoubleAnimation(1, TimeSpan.FromMilliseconds(140)) { EasingFunction = easing });
+        ToastTransform.BeginAnimation(
+            TranslateTransform.YProperty,
+            new DoubleAnimation(0, TimeSpan.FromMilliseconds(160)) { EasingFunction = easing });
+
+        _toastHideTimer.Start();
+    }
+
+    private void ToastHideTimer_Tick(object? sender, EventArgs e)
+    {
+        _toastHideTimer.Stop();
+        HideToast();
+    }
+
+    private void HideToast()
+    {
+        var opacityAnimation = new DoubleAnimation(0, TimeSpan.FromMilliseconds(180))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        opacityAnimation.Completed += (_, _) =>
+        {
+            if (ToastHost.Opacity <= 0.01)
+            {
+                ToastHost.Visibility = Visibility.Collapsed;
+            }
+        };
+
+        ToastHost.BeginAnimation(OpacityProperty, opacityAnimation);
+        ToastTransform.BeginAnimation(
+            TranslateTransform.YProperty,
+            new DoubleAnimation(10, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            });
     }
 
     private async Task<CaptureResult?> CaptureRegionFromUserAsync()

@@ -180,7 +180,7 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         {
             if (_hasSelection)
             {
-                ClearSelection();
+                HandleRightClickWithSelection();
                 Invalidate();
                 return;
             }
@@ -194,7 +194,8 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
             return;
         }
 
-        if (_textEditor.Visible)
+        var wasTextEditorVisible = _textEditor.Visible;
+        if (wasTextEditorVisible)
         {
             CommitTextEditor();
         }
@@ -227,6 +228,14 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
 
         if (_hasSelection && _selection.Contains(e.Location))
         {
+            if (_activeTool == AnnotationTool.Text && (_selectedAnnotationIndex >= 0 || wasTextEditorVisible))
+            {
+                _selectedAnnotationIndex = -1;
+                _styleMenuVisible = false;
+                Invalidate();
+                return;
+            }
+
             _selectedAnnotationIndex = -1;
             BeginAnnotation(e.Location);
             return;
@@ -248,6 +257,37 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         _styleMenuVisible = false;
         _isDraggingSelection = true;
         Invalidate();
+    }
+
+    private void HandleRightClickWithSelection()
+    {
+        if (_textEditor.Visible)
+        {
+            CommitTextEditor();
+        }
+
+        if (_isAnnotating)
+        {
+            _isAnnotating = false;
+            _activeStroke = null;
+        }
+
+        if (_isEditingAnnotation)
+        {
+            if (_selectedAnnotationIndex >= 0
+                && _selectedAnnotationIndex < _annotations.Count
+                && _annotationBeforeEdit is not null)
+            {
+                _annotations[_selectedAnnotationIndex] = _annotationBeforeEdit;
+            }
+
+            _isEditingAnnotation = false;
+            _activeAnnotationHandle = AnnotationEditHandle.None;
+            _annotationBeforeEdit = null;
+        }
+
+        _styleMenuVisible = false;
+        _selectedAnnotationIndex = -1;
     }
 
     protected override void OnMouseMove(Forms.MouseEventArgs e)
@@ -606,7 +646,7 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
     private bool TryBeginAnnotationEdit(Point point)
     {
         var hit = HitAnnotation(point);
-        if (hit is null || _annotations[hit.Index] is not TextAnnotation)
+        if (hit is null)
         {
             return false;
         }
@@ -627,8 +667,23 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         for (var i = _annotations.Count - 1; i >= 0; i--)
         {
             var annotation = _annotations[i];
-            if (annotation is not TextAnnotation)
+            if (annotation is ArrowAnnotation arrow)
             {
+                if (HandleCircle(arrow.Start, 18).Contains(point))
+                {
+                    return new AnnotationHit(i, AnnotationEditHandle.ArrowStart);
+                }
+
+                if (HandleCircle(arrow.End, 18).Contains(point))
+                {
+                    return new AnnotationHit(i, AnnotationEditHandle.ArrowEnd);
+                }
+
+                if (DistanceToSegment(point, arrow.Start, arrow.End) <= Math.Max(8, arrow.Width + 5))
+                {
+                    return new AnnotationHit(i, AnnotationEditHandle.Move);
+                }
+
                 continue;
             }
 
@@ -641,14 +696,34 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
                 }
             }
 
-            var hitBounds = RectangleF.Inflate(bounds, 8, 8);
-            if (hitBounds.Contains(point))
+            if (IsAnnotationBodyHit(annotation, point, bounds))
             {
                 return new AnnotationHit(i, AnnotationEditHandle.Move);
             }
         }
 
         return null;
+    }
+
+    private static bool IsAnnotationBodyHit(Annotation annotation, Point point, RectangleF bounds)
+    {
+        if (bounds.IsEmpty)
+        {
+            return false;
+        }
+
+        var hitBounds = RectangleF.Inflate(bounds, 8, 8);
+        if (annotation is RectangleAnnotation rectangle)
+        {
+            return hitBounds.Contains(point)
+                   && (Math.Abs(point.X - rectangle.Bounds.Left) <= 8
+                       || Math.Abs(point.X - rectangle.Bounds.Right) <= 8
+                       || Math.Abs(point.Y - rectangle.Bounds.Top) <= 8
+                       || Math.Abs(point.Y - rectangle.Bounds.Bottom) <= 8
+                       || rectangle.Bounds.Contains(point));
+        }
+
+        return hitBounds.Contains(point);
     }
 
     private void EditSelectedAnnotation(Point point)
@@ -1512,14 +1587,21 @@ public sealed class ScreenshotSelectionWindow : Forms.Form
         }
 
         var annotation = _annotations[_selectedAnnotationIndex];
-        if (annotation is not TextAnnotation)
-        {
-            return;
-        }
-
         using var outline = new Pen(Color.FromArgb(220, AccentColor), 1.6f) { DashStyle = DashStyle.Dash };
         using var fill = new SolidBrush(Color.White);
         using var edge = new Pen(AccentColor, 1.4f);
+
+        if (annotation is ArrowAnnotation arrow)
+        {
+            graphics.DrawLine(outline, arrow.Start, arrow.End);
+            foreach (var handle in new[] { HandleCircle(arrow.Start, 10), HandleCircle(arrow.End, 10) })
+            {
+                graphics.FillEllipse(fill, handle);
+                graphics.DrawEllipse(edge, handle);
+            }
+
+            return;
+        }
 
         var bounds = AnnotationBounds(annotation);
         if (bounds.IsEmpty)

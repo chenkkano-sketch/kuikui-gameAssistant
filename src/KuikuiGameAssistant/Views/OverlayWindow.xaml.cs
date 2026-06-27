@@ -27,6 +27,7 @@ public partial class OverlayWindow : Window
     private const int DwmwaCloaked = 14;
     private const uint MonitorDefaultToNearest = 2;
     private const int FullscreenTolerancePx = 2;
+    private const double PlacementMargin = 16;
     private static readonly IntPtr HtTransparent = new(-1);
     private readonly TelemetryService _telemetry;
     private readonly OverlaySettings _settings;
@@ -64,6 +65,7 @@ public partial class OverlayWindow : Window
         _source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
         _source?.AddHook(WndProc);
         ApplyNativeWindowStyles();
+        PositionWindow();
         ConfigureFullscreenVisibilityTimer();
     }
 
@@ -91,7 +93,7 @@ public partial class OverlayWindow : Window
 
     private void Settings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        Dispatcher.Invoke(ApplySettings);
+        Dispatcher.Invoke(() => ApplySettings(e.PropertyName));
     }
 
     private void Metrics_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -140,7 +142,13 @@ public partial class OverlayWindow : Window
             return;
         }
 
-        DragMove();
+        try
+        {
+            DragMove();
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     private void SetLayoutMode(OverlayLayoutMode layoutMode)
@@ -149,7 +157,7 @@ public partial class OverlayWindow : Window
         VerticalPanel.Visibility = layoutMode == OverlayLayoutMode.Vertical ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void ApplySettings()
+    private void ApplySettings(string? changedPropertyName = null)
     {
         SetLayoutMode(_settings.LayoutMode);
         Width = _settings.CurrentWidth;
@@ -161,6 +169,10 @@ public partial class OverlayWindow : Window
         RootBorder.IsHitTestVisible = !_settings.IsClickThroughEnabled;
         ApplyNativeWindowStyles();
         ConfigureFullscreenVisibilityTimer();
+        if (ShouldReposition(changedPropertyName))
+        {
+            PositionWindow();
+        }
 
         foreach (var metric in Metrics)
         {
@@ -169,6 +181,110 @@ public partial class OverlayWindow : Window
             metric.LabelFontSize = _settings.LabelFontSize;
             metric.ValueFontSize = _settings.FontSize;
         }
+    }
+
+    private static bool ShouldReposition(string? propertyName)
+    {
+        return propertyName is null
+            or nameof(OverlaySettings.LayoutMode)
+            or nameof(OverlaySettings.HorizontalWidth)
+            or nameof(OverlaySettings.HorizontalHeight)
+            or nameof(OverlaySettings.VerticalWidth)
+            or nameof(OverlaySettings.VerticalHeight)
+            or nameof(OverlaySettings.Placement);
+    }
+
+    private void PositionWindow()
+    {
+        var bounds = GetPlacementBounds();
+        if (bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            return;
+        }
+
+        var width = Width > 0 ? Width : _settings.CurrentWidth;
+        var height = Height > 0 ? Height : _settings.CurrentHeight;
+        var horizontalCenter = bounds.Left + (bounds.Width - width) / 2;
+        var verticalCenter = bounds.Top + (bounds.Height - height) / 2;
+
+        var left = _settings.Placement switch
+        {
+            OverlayPlacement.TopLeft or OverlayPlacement.Left or OverlayPlacement.BottomLeft => bounds.Left + PlacementMargin,
+            OverlayPlacement.TopRight or OverlayPlacement.Right or OverlayPlacement.BottomRight => bounds.Right - width - PlacementMargin,
+            _ => horizontalCenter
+        };
+
+        var top = _settings.Placement switch
+        {
+            OverlayPlacement.TopLeft or OverlayPlacement.Top or OverlayPlacement.TopRight => bounds.Top + PlacementMargin,
+            OverlayPlacement.BottomLeft or OverlayPlacement.Bottom or OverlayPlacement.BottomRight => bounds.Bottom - height - PlacementMargin,
+            _ => verticalCenter
+        };
+
+        Left = ClampToBounds(left, bounds.Left, bounds.Right - width);
+        Top = ClampToBounds(top, bounds.Top, bounds.Bottom - height);
+    }
+
+    private System.Windows.Rect GetPlacementBounds()
+    {
+        if (TryGetForegroundFullscreenBounds(out var fullscreenBounds))
+        {
+            return fullscreenBounds;
+        }
+
+        if (TryGetOverlayMonitorWorkArea(out var monitorWorkArea))
+        {
+            return monitorWorkArea;
+        }
+
+        return SystemParameters.WorkArea;
+    }
+
+    private bool TryGetOverlayMonitorWorkArea(out System.Windows.Rect bounds)
+    {
+        bounds = default;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        if (monitor == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var monitorInfo = new MonitorInfo();
+        monitorInfo.Size = Marshal.SizeOf<MonitorInfo>();
+        if (!GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return false;
+        }
+
+        bounds = NativeRectToDeviceIndependentRect(monitorInfo.WorkArea);
+        return bounds.Width > 0 && bounds.Height > 0;
+    }
+
+    private System.Windows.Rect NativeRectToDeviceIndependentRect(NativeRect rect)
+    {
+        var topLeft = PointFromDevice(rect.Left, rect.Top);
+        var bottomRight = PointFromDevice(rect.Right, rect.Bottom);
+        return new System.Windows.Rect(topLeft, bottomRight);
+    }
+
+    private System.Windows.Point PointFromDevice(int x, int y)
+    {
+        var point = new System.Windows.Point(x, y);
+        var source = PresentationSource.FromVisual(this);
+        return source?.CompositionTarget is null
+            ? point
+            : source.CompositionTarget.TransformFromDevice.Transform(point);
+    }
+
+    private static double ClampToBounds(double value, double minimum, double maximum)
+    {
+        return maximum < minimum ? minimum : Math.Clamp(value, minimum, maximum);
     }
 
     private void RebuildMetrics()
@@ -245,6 +361,7 @@ public partial class OverlayWindow : Window
         }
 
         _isHiddenByFullscreenFilter = false;
+        PositionWindow();
         Show();
         Topmost = true;
         ApplyNativeWindowStyles();
@@ -283,6 +400,12 @@ public partial class OverlayWindow : Window
 
     private bool IsForegroundFullscreenWindow()
     {
+        return TryGetForegroundFullscreenBounds(out _);
+    }
+
+    private bool TryGetForegroundFullscreenBounds(out System.Windows.Rect fullscreenBounds)
+    {
+        fullscreenBounds = default;
         var foreground = GetForegroundWindow();
         if (foreground == IntPtr.Zero)
         {
@@ -318,7 +441,13 @@ public partial class OverlayWindow : Window
             return false;
         }
 
-        return CoversMonitor(bounds, monitorInfo.Monitor);
+        if (!CoversMonitor(bounds, monitorInfo.Monitor))
+        {
+            return false;
+        }
+
+        fullscreenBounds = NativeRectToDeviceIndependentRect(bounds);
+        return fullscreenBounds.Width > 0 && fullscreenBounds.Height > 0;
     }
 
     private static bool TryGetWindowBounds(IntPtr hwnd, out NativeRect bounds)

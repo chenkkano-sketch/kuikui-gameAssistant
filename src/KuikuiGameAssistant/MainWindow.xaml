@@ -195,6 +195,53 @@
                     <ContentControl x:Name="PageHost" Grid.Row="1" Margin="28,0,28,28" />
                 </Grid>
             </Grid>
+
+            <Border x:Name="ToastHost"
+                    Grid.RowSpan="2"
+                    Panel.ZIndex="20"
+                    MinWidth="150"
+                    MaxWidth="320"
+                    Padding="13,10"
+                    Margin="0,0,30,30"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    IsHitTestVisible="False"
+                    Opacity="0"
+                    Visibility="Collapsed">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18"
+                                      ShadowDepth="4"
+                                      Opacity="0.18" />
+                </Border.Effect>
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="ToastTransform" Y="10" />
+                </Border.RenderTransform>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="18" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="&#xE73E;"
+                               FontFamily="{StaticResource IconFont}"
+                               FontSize="13"
+                               Foreground="{DynamicResource StatusOkBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                    <TextBlock x:Name="ToastText"
+                               Grid.Column="1"
+                               Margin="9,0,0,0"
+                               Text="设置已保存"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                </Grid>
+            </Border>
         </Grid>
     </Border>
 </Window>
