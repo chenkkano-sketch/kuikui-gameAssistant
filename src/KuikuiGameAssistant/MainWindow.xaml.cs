@@ -49,6 +49,7 @@ public partial class MainWindow : Window
         _toastHideTimer.Tick += ToastHideTimer_Tick;
 
         Navigate("Dashboard");
+        ApplyBackgroundMode(App.Settings.AppSettings.BackgroundMode);
         UpdateWindowFrameShape();
     }
 
@@ -243,11 +244,16 @@ public partial class MainWindow : Window
     {
         if (Dispatcher.CheckAccess())
         {
+            ApplyBackgroundMode(App.Settings.AppSettings.BackgroundMode);
             ApplySelectedNavState();
             return;
         }
 
-        _ = Dispatcher.BeginInvoke(ApplySelectedNavState);
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            ApplyBackgroundMode(App.Settings.AppSettings.BackgroundMode);
+            ApplySelectedNavState();
+        });
     }
 
     private void Nav_Click(object sender, RoutedEventArgs e)
@@ -402,6 +408,16 @@ public partial class MainWindow : Window
             AppThemeService.Apply(App.Settings.AppSettings.ThemeMode);
         }
 
+        if (e.PropertyName == nameof(AppSettings.BackgroundMode))
+        {
+            ApplyBackgroundMode(App.Settings.AppSettings.BackgroundMode);
+        }
+
+        if (e.PropertyName == nameof(AppSettings.FontMode))
+        {
+            AppThemeService.ApplyFont(App.Settings.AppSettings.FontMode);
+        }
+
         App.Settings.Save(App.OverlaySettings);
         if (ShouldShowSettingsToast(e.PropertyName))
         {
@@ -413,6 +429,48 @@ public partial class MainWindow : Window
     {
         return propertyName is not nameof(AppSettings.LastUpdateCheckUtc)
             and not nameof(AppSettings.MemoryOptimizedDefaultsApplied);
+    }
+
+    private void ApplyBackgroundMode(AppBackgroundMode mode)
+    {
+        static System.Windows.Media.Color ColorFrom(string value) =>
+            (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(value)!;
+
+        switch (mode)
+        {
+            case AppBackgroundMode.Solid:
+                WindowBackgroundStart.Color = (System.Windows.Media.Color)FindResource("WindowBackgroundColor");
+                WindowBackgroundMiddle.Color = (System.Windows.Media.Color)FindResource("WindowBackgroundColor");
+                WindowBackgroundEnd.Color = (System.Windows.Media.Color)FindResource("WindowBackgroundColor");
+                BackgroundGlowPrimary.Opacity = 0;
+                BackgroundGlowSecondary.Opacity = 0;
+                BackgroundGlowTertiary.Opacity = 0;
+                break;
+            case AppBackgroundMode.Acrylic:
+                WindowBackgroundStart.Color = AppThemeService.IsDark ? ColorFrom("#EE2B2B2B") : ColorFrom("#F4FFFFFF");
+                WindowBackgroundMiddle.Color = AppThemeService.IsDark ? ColorFrom("#EE202020") : ColorFrom("#EEF4F8FF");
+                WindowBackgroundEnd.Color = AppThemeService.IsDark ? ColorFrom("#EE303030") : ColorFrom("#EEF8FBFF");
+                BackgroundGlowPrimary.Opacity = AppThemeService.IsDark ? 0.10 : 0.28;
+                BackgroundGlowSecondary.Opacity = AppThemeService.IsDark ? 0.04 : 0.16;
+                BackgroundGlowTertiary.Opacity = AppThemeService.IsDark ? 0 : 0.08;
+                break;
+            case AppBackgroundMode.MicaAlt:
+                WindowBackgroundStart.Color = AppThemeService.IsDark ? ColorFrom("#FF242424") : ColorFrom("#FFF8FAFC");
+                WindowBackgroundMiddle.Color = AppThemeService.IsDark ? ColorFrom("#FF202020") : ColorFrom("#FFEFF4FA");
+                WindowBackgroundEnd.Color = AppThemeService.IsDark ? ColorFrom("#FF2A2A2A") : ColorFrom("#FFF6F8FC");
+                BackgroundGlowPrimary.Opacity = AppThemeService.IsDark ? 0.06 : 0.10;
+                BackgroundGlowSecondary.Opacity = AppThemeService.IsDark ? 0.03 : 0.08;
+                BackgroundGlowTertiary.Opacity = 0;
+                break;
+            default:
+                WindowBackgroundStart.Color = (System.Windows.Media.Color)FindResource("SurfaceColor");
+                WindowBackgroundMiddle.Color = (System.Windows.Media.Color)FindResource("WindowBackgroundColor");
+                WindowBackgroundEnd.Color = (System.Windows.Media.Color)FindResource("SurfaceMutedColor");
+                BackgroundGlowPrimary.Opacity = AppThemeService.IsDark ? 0.12 : 0.72;
+                BackgroundGlowSecondary.Opacity = AppThemeService.IsDark ? 0.04 : 0.18;
+                BackgroundGlowTertiary.Opacity = AppThemeService.IsDark ? 0 : 0.14;
+                break;
+        }
     }
 
     private void ToastService_ToastRequested(object? sender, ToastRequestedEventArgs e)

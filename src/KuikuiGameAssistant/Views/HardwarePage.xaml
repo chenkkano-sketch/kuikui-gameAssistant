@@ -12,11 +12,25 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Border HorizontalAlignment="Left" Background="{DynamicResource SurfaceMutedBrush}" CornerRadius="8" Padding="8,4">
-                <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
+            <Border HorizontalAlignment="Left" Background="{DynamicResource AccentSoftBrush}" CornerRadius="10" Padding="10,5">
+                <TextBlock Text="{Binding StatusText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
                            VerticalAlignment="Center" />
             </Border>
-            <ProgressBar Grid.Column="1" Width="130" Height="4" IsIndeterminate="{Binding IsLoading}" />
+            <ProgressBar Grid.Column="1"
+                         Width="130"
+                         Height="4"
+                         IsIndeterminate="{Binding IsLoading}">
+                <ProgressBar.Style>
+                    <Style TargetType="{x:Type ProgressBar}" BasedOn="{StaticResource {x:Type ProgressBar}}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <Trigger Property="IsIndeterminate" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ProgressBar.Style>
+            </ProgressBar>
         </Grid>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
@@ -28,17 +42,17 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Width="456" MinHeight="150" Margin="0,0,10,10" Padding="15" Style="{StaticResource CardBorderStyle}">
+                        <Border Width="444" MinHeight="144" Margin="0,0,10,10" Padding="15" Style="{StaticResource CardBorderStyle}">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
                                 <StackPanel Orientation="Horizontal">
-                                    <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource AccentSoftBrush}">
+                                    <Border Width="30" Height="30" CornerRadius="9" Background="{DynamicResource AccentSoftBrush}">
                                         <TextBlock Text="{Binding Icon}" FontFamily="{StaticResource IconFont}"
                                                    Foreground="{DynamicResource AccentBrush}"
-                                                   FontSize="13"
+                                                   FontSize="14"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                     <TextBlock Text="{Binding Title}" Margin="9,0,0,0" FontSize="15"
@@ -50,12 +64,12 @@
                                         <DataTemplate>
                                             <Grid Margin="0,0,0,5">
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="92" />
+                                                    <ColumnDefinition Width="100" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Name}" FontSize="12"
                                                            Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12"
+                                                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12" FontWeight="SemiBold"
                                                            LineHeight="17"
                                                            TextWrapping="Wrap" />
                                             </Grid>

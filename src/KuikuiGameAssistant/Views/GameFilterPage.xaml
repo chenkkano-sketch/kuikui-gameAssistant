@@ -4,152 +4,185 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.25*" />
+                <ColumnDefinition Width="1.1*" />
                 <ColumnDefinition Width="0.9*" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0">
-                <Border Padding="18" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,12">
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                <Border Padding="20" Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
+                        <TextBlock Text="滤镜开关" FontSize="20" FontWeight="Bold" />
+                        <TextBlock Text="先打开需要的功能，再调节下面的参数。"
+                                   Margin="0,5,0,16"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" />
                         <Grid>
-                            <TextBlock Text="全屏色彩滤镜" FontSize="17" FontWeight="SemiBold" />
-                            <CheckBox Content="启用色彩"
-                                      HorizontalAlignment="Right"
-                                      IsChecked="{Binding IsEnabled, Mode=TwoWay}" />
-                        </Grid>
-
-                        <Grid Margin="0,16,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="108" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="56" />
+                                <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="44" />
-                                <RowDefinition Height="44" />
-                                <RowDefinition Height="44" />
-                                <RowDefinition Height="44" />
-                                <RowDefinition Height="44" />
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Text="亮度" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                            <Slider Grid.Column="1" Minimum="-100" Maximum="100"
-                                    Value="{Binding Brightness, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Column="2" Text="{Binding Brightness, StringFormat={}{0:0}}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
-
-                            <TextBlock Grid.Row="1" Text="对比度" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                            <Slider Grid.Row="1" Grid.Column="1" Minimum="-100" Maximum="100"
-                                    Value="{Binding Contrast, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Contrast, StringFormat={}{0:0}}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
-
-                            <TextBlock Grid.Row="2" Text="灰度" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                            <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100"
-                                    Value="{Binding Grayscale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding Grayscale, StringFormat={}{0:0}%}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
-
-                            <TextBlock Grid.Row="3" Text="饱和度" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                            <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="200"
-                                    Value="{Binding Saturation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding Saturation, StringFormat={}{0:0}%}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
-
-                            <TextBlock Grid.Row="4" Text="色调" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                            <Slider Grid.Row="4" Grid.Column="1" Minimum="-180" Maximum="180"
-                                    Value="{Binding Hue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding Hue, StringFormat={}{0:0}°}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            <Border Padding="16"
+                                    CornerRadius="14"
+                                    Background="{DynamicResource SurfaceMutedBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1"
+                                    Margin="0,0,8,0">
+                                <StackPanel>
+                                    <CheckBox Content="启用色彩滤镜"
+                                              Style="{StaticResource SwitchCheckBoxStyle}"
+                                              IsChecked="{Binding IsEnabled, Mode=TwoWay}" />
+                                    <TextBlock Text="亮度、对比度、灰度、饱和度、色调"
+                                               Margin="0,12,0,0"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1"
+                                    Padding="16"
+                                    CornerRadius="14"
+                                    Background="{DynamicResource SurfaceMutedBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1"
+                                    Margin="8,0,0,0">
+                                <StackPanel>
+                                    <CheckBox Content="启用屏幕暗角"
+                                              Style="{StaticResource SwitchCheckBoxStyle}"
+                                              IsChecked="{Binding VignetteEnabled, Mode=TwoWay}" />
+                                    <TextBlock Text="让画面边缘压暗，突出屏幕中心"
+                                               Margin="0,12,0,0"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </Border>
                         </Grid>
                     </StackPanel>
                 </Border>
 
-                <Border Padding="18" Style="{StaticResource CardBorderStyle}" Margin="0,0,12,0">
+                <Border Margin="0,16,0,0" Padding="20" MinHeight="328" Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
                         <Grid>
-                            <TextBlock Text="屏幕暗角" FontSize="17" FontWeight="SemiBold" />
-                            <CheckBox Content="启用暗角"
-                                      HorizontalAlignment="Right"
-                                      IsChecked="{Binding VignetteEnabled, Mode=TwoWay}" />
+                            <StackPanel>
+                                <TextBlock Text="色彩校准" FontSize="18" FontWeight="Bold" />
+                                <TextBlock Text="应用到全屏和无边框全屏游戏"
+                                           Margin="0,5,0,0"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
                         </Grid>
 
-                        <Grid Margin="0,16,0,0">
+                        <Grid Margin="0,18,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="108" />
+                                <ColumnDefinition Width="96" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="56" />
+                                <ColumnDefinition Width="58" />
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="44" />
-                                <RowDefinition Height="44" />
-                                <RowDefinition Height="44" />
+                                <RowDefinition Height="46" />
+                                <RowDefinition Height="46" />
+                                <RowDefinition Height="46" />
+                                <RowDefinition Height="46" />
+                                <RowDefinition Height="46" />
                             </Grid.RowDefinitions>
 
-                            <TextBlock Text="颜色" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Style="{StaticResource InputTextBoxStyle}"
-                                     Text="{Binding VignetteColorHex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                            <Border x:Name="VignetteColorPreview"
-                                    Grid.Column="2"
-                                    Width="34"
-                                    Height="24"
-                                    CornerRadius="6"
-                                    HorizontalAlignment="Right"
-                                    Background="{DynamicResource SurfaceMutedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" />
+                            <TextBlock Text="亮度" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{Binding Brightness, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Column="2" Text="{Binding Brightness, StringFormat={}{0:0}}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
 
-                            <TextBlock Grid.Row="1" Text="亮暗" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                            <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100"
-                                    Value="{Binding VignetteIntensity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding VignetteIntensity, StringFormat={}{0:0}%}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1" Text="对比度" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="1" Grid.Column="1" Minimum="-100" Maximum="100" Value="{Binding Contrast, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Contrast, StringFormat={}{0:0}}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
 
-                            <TextBlock Grid.Row="2" Text="羽化" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                            <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100"
-                                    Value="{Binding VignetteFeather, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding VignetteFeather, StringFormat={}{0:0}%}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="2" Text="灰度" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Grayscale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding Grayscale, StringFormat={}{0:0}%}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="3" Text="饱和度" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="200" Value="{Binding Saturation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding Saturation, StringFormat={}{0:0}%}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="4" Text="色调" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="4" Grid.Column="1" Minimum="-180" Maximum="180" Value="{Binding Hue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding Hue, StringFormat={}{0:0}°}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
                     </StackPanel>
                 </Border>
             </StackPanel>
 
             <StackPanel Grid.Column="1">
-                <Border Padding="18" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
+                <Border Padding="20" MinHeight="328" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock Text="预设" FontSize="17" FontWeight="SemiBold" />
-                        <TextBlock Text="保存当前滤镜参数，之后可随时读档。"
-                                   Margin="0,6,0,12"
-                                   FontSize="13"
+                        <Grid>
+                            <StackPanel>
+                                <TextBlock Text="屏幕暗角" FontSize="18" FontWeight="Bold" />
+                                <TextBlock Text="强化画面中心聚焦"
+                                           Margin="0,5,0,0"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,18,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="58" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="颜色" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Style="{StaticResource InputTextBoxStyle}" Text="{Binding VignetteColorHex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <Border x:Name="VignetteColorPreview"
+                                    Grid.Column="2"
+                                    Width="38"
+                                    Height="28"
+                                    CornerRadius="8"
+                                    HorizontalAlignment="Right"
+                                    Background="{DynamicResource SurfaceMutedBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1" />
+
+                            <TextBlock Grid.Row="1" Text="亮暗" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding VignetteIntensity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding VignetteIntensity, StringFormat={}{0:0}%}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="2" Text="羽化" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding VignetteFeather, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding VignetteFeather, StringFormat={}{0:0}%}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="20" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="预设管理" FontSize="18" FontWeight="Bold" />
+                        <TextBlock Text="保存当前参数，之后可一键读档。"
+                                   Margin="0,5,0,14"
+                                   FontSize="12"
                                    Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBox x:Name="PresetNameBox"
-                                 Style="{StaticResource InputTextBoxStyle}"
-                                 Text="我的沉浸滤镜" />
+                        <TextBox x:Name="PresetNameBox" Style="{StaticResource InputTextBoxStyle}" Text="我的沉浸滤镜" />
                         <ComboBox x:Name="PresetComboBox"
                                   ItemsSource="{Binding Presets}"
                                   DisplayMemberPath="Name"
                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                   Background="{DynamicResource InputBackgroundBrush}"
                                   BorderBrush="{DynamicResource BorderBrush}"
-                                  Height="36"
+                                  Height="38"
                                   Margin="0,10,0,0" />
-                        <UniformGrid Columns="2" Margin="0,12,0,0">
-                            <Button Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,6,8" Click="SavePreset_Click">
+                        <UniformGrid Columns="2" Margin="0,14,0,0">
+                            <Button Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,7,8" Click="SavePreset_Click">
                                 <TextBlock Text="保存预设" />
                             </Button>
-                            <Button Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,8" Click="LoadPreset_Click">
+                            <Button Style="{StaticResource SecondaryButtonStyle}" Margin="7,0,0,8" Click="LoadPreset_Click">
                                 <TextBlock Text="读取预设" />
                             </Button>
-                            <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0" Click="DeletePreset_Click">
+                            <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,7,0" Click="DeletePreset_Click">
                                 <TextBlock Text="删除预设" />
                             </Button>
-                            <Button Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0" Click="Reset_Click">
+                            <Button Style="{StaticResource SecondaryButtonStyle}" Margin="7,0,0,0" Click="Reset_Click">
                                 <TextBlock Text="重置滤镜" />
                             </Button>
                         </UniformGrid>
@@ -157,15 +190,24 @@
                 </Border>
 
                 <Border Padding="18" Style="{StaticResource CardBorderStyle}">
-                    <StackPanel>
-                        <TextBlock Text="状态" FontSize="17" FontWeight="SemiBold" />
-                        <TextBlock x:Name="FilterStatusText"
-                                   Text="滤镜未启用"
-                                   Margin="0,10,0,0"
-                                   FontSize="13"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   TextWrapping="Wrap" />
-                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="38" Height="38" CornerRadius="11" Background="{DynamicResource AccentSoftBrush}">
+                            <TextBlock Text="&#xE946;" Style="{StaticResource IconTextStyle}" Foreground="{DynamicResource AccentBrush}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="当前状态" FontSize="14" FontWeight="Bold" />
+                            <TextBlock x:Name="FilterStatusText"
+                                       Text="滤镜未启用"
+                                       Margin="0,3,0,0"
+                                       FontSize="13"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
                 </Border>
             </StackPanel>
         </Grid>

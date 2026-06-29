@@ -5,253 +5,202 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding StatusText}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
-                           VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="{Binding UpdatedText}" FontSize="13"
-                           Foreground="{DynamicResource TextSecondaryBrush}" />
-            </Grid>
-
-            <Border Margin="0,12,12,0"
-                    Padding="14"
-                    CornerRadius="8"
-                    Background="{DynamicResource AccentSoftBrush}"
-                    BorderBrush="{DynamicResource AccentBrush}"
-                    BorderThickness="1"
-                    Visibility="{Binding FpsAssistVisibility}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Border Width="38"
-                            Height="38"
-                            CornerRadius="8"
-                            Background="{DynamicResource SurfaceBrush}">
-                        <TextBlock Text="&#xE7C1;"
-                                   Style="{StaticResource IconTextStyle}"
-                                   Foreground="{DynamicResource AccentBrush}" />
-                    </Border>
-                    <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding FpsAssistTitle}" FontSize="14" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FpsAssistText}"
-                                   Margin="0,3,0,0"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   TextWrapping="Wrap" />
-                    </StackPanel>
-                    <Button Grid.Column="2"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Height="34"
-                            MinWidth="112"
-                            Click="FpsAssist_Click">
-                        <TextBlock Text="{Binding FpsAssistButtonText}" />
-                    </Button>
-                </Grid>
-            </Border>
-
-            <Border Margin="0,12,12,0"
-                    Padding="12"
-                    Style="{StaticResource CardBorderStyle}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="220" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="实时监控模块" FontSize="15" FontWeight="SemiBold" />
-                        <TextBlock Text="每张卡片都可以绑定一个传感器；新增、删除和切换会立即生效。"
-                                   Margin="0,3,0,0"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource TextSecondaryBrush}" />
-                    </StackPanel>
-                    <ComboBox Grid.Column="1"
-                              ItemsSource="{Binding ModuleTemplates}"
-                              SelectedItem="{Binding SelectedModuleTemplate}"
-                              DisplayMemberPath="Title"
-                              Foreground="{DynamicResource TextPrimaryBrush}"
-                              Background="{DynamicResource InputBackgroundBrush}"
-                              BorderBrush="{DynamicResource BorderBrush}"
-                              Height="34"
-                              Margin="12,0,8,0"
-                              VerticalAlignment="Center" />
-                    <Button Grid.Column="2"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            Height="34"
-                            MinWidth="96"
-                            Click="AddModule_Click">
-                        <TextBlock Text="添加模块" />
-                    </Button>
-                </Grid>
-            </Border>
-
-            <ItemsControl ItemsSource="{Binding Metrics}" Margin="0,14,0,0">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Width="238" Height="168" Margin="0,0,12,12" Padding="14" Style="{StaticResource CardBorderStyle}">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Width="34" Height="34" CornerRadius="8" Background="{DynamicResource SurfaceMutedBrush}">
-                                        <TextBlock Text="{Binding Icon}"
-                                                   FontFamily="{StaticResource IconFont}"
-                                                   Foreground="{Binding AccentBrush}"
-                                                   FontSize="16"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Grid.Column="1" Text="{Binding Title}" Margin="10,0,0,0" FontSize="13"
-                                               Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"
-                                               TextTrimming="CharacterEllipsis" />
-                                    <Button Grid.Column="2"
-                                            Width="26"
-                                            Height="26"
-                                            MinWidth="0"
-                                            Padding="0"
-                                            Tag="{Binding Id}"
-                                            Style="{StaticResource SecondaryButtonStyle}"
-                                            Click="RemoveModule_Click"
-                                            ToolTip="移除此模块">
-                                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10" />
-                                    </Button>
-                                </Grid>
-                                <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding ValueText}" FontSize="31" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding Unit}" Margin="7,11,0,0" FontSize="13"
-                                               Foreground="{DynamicResource TextSecondaryBrush}" />
-                                </StackPanel>
-                                <TextBlock Grid.Row="2" Text="{Binding Subtitle}" FontSize="12"
-                                           Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
-                                <ComboBox Grid.Row="3"
-                                          ItemsSource="{Binding SensorOptions}"
-                                          SelectedValue="{Binding SelectedSensorId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                          SelectedValuePath="Id"
-                                          DisplayMemberPath="DisplayName"
-                                          Foreground="{DynamicResource TextPrimaryBrush}"
-                                          Background="{DynamicResource InputBackgroundBrush}"
-                                          BorderBrush="{DynamicResource BorderBrush}"
-                                          IsEnabled="{Binding CanSelectSensor}"
-                                          Height="30"
-                                          Margin="0,8,0,0"
-                                          FontSize="12"
-                                          DropDownClosed="SensorCombo_DropDownClosed"
-                                          SelectionChanged="SensorCombo_SelectionChanged" />
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <Grid Margin="0,6,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*" />
-                    <ColumnDefinition Width="1*" />
-                </Grid.ColumnDefinitions>
-
-                <Border Grid.Column="0" Height="260" Padding="18" Style="{StaticResource CardBorderStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
+                <StackPanel>
+                    <Border Padding="18" Style="{StaticResource CardBorderStyle}">
                         <Grid>
-                            <TextBlock Text="60 秒负载曲线" FontSize="16" FontWeight="SemiBold" />
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
-                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource GraphCpuBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Text="CPU" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
-                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource GraphGpuBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Text="GPU" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource GraphMemoryBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Text="内存" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid>
+                                <TextBlock Text="监控模块" FontSize="18" FontWeight="Bold" />
+                                <Grid HorizontalAlignment="Right" VerticalAlignment="Top">
+                                    <ToggleButton x:Name="AddModuleToggle"
+                                                  Width="40"
+                                                  Height="40"
+                                                  ToolTip="添加监控模块"
+                                                  Cursor="Hand"
+                                                  FocusVisualStyle="{x:Null}">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                                <Border x:Name="Root"
+                                                        Background="{DynamicResource AccentSoftBrush}"
+                                                        BorderBrush="{DynamicResource BorderBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="12">
+                                                    <TextBlock Text="&#xE710;"
+                                                               FontFamily="{StaticResource IconFont}"
+                                                               FontSize="15"
+                                                               Foreground="{DynamicResource AccentBrush}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter TargetName="Root" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                    <Popup PlacementTarget="{Binding ElementName=AddModuleToggle}"
+                                           Placement="Bottom"
+                                           AllowsTransparency="True"
+                                           StaysOpen="False"
+                                           IsOpen="{Binding IsChecked, ElementName=AddModuleToggle}">
+                                        <Border Width="286"
+                                                Margin="0,8,0,0"
+                                                Padding="14"
+                                                Style="{StaticResource CardBorderStyle}">
+                                            <StackPanel>
+                                                <TextBlock Text="添加监控模块" FontSize="15" FontWeight="Bold" />
+                                                <ComboBox ItemsSource="{Binding ModuleTemplates}"
+                                                          SelectedItem="{Binding SelectedModuleTemplate}"
+                                                          DisplayMemberPath="Title"
+                                                          Foreground="{DynamicResource TextPrimaryBrush}"
+                                                          Background="{DynamicResource InputBackgroundBrush}"
+                                                          BorderBrush="{DynamicResource BorderBrush}"
+                                                          Height="36"
+                                                          Margin="0,12,0,10" />
+                                                <Button Style="{StaticResource PrimaryButtonStyle}"
+                                                        Height="38"
+                                                        Click="AddModule_Click">
+                                                    <TextBlock Text="添加" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
+                            </Grid>
 
-                        <controls:HistoryGraph Grid.Row="1"
-                                               Margin="0,18,0,0"
-                                               CpuValues="{Binding CpuHistory}"
-                                               GpuValues="{Binding GpuHistory}"
-                                               MemoryValues="{Binding MemoryHistory}" />
-                    </Grid>
-                </Border>
-
-                <Border Grid.Column="1" Margin="12,0,0,0" Height="260" Padding="14" Style="{StaticResource CardBorderStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="温度传感器诊断" FontSize="16" FontWeight="SemiBold" />
-                        <TextBlock Grid.Row="1"
-                                   Text="{Binding TemperatureDiagnosticText}"
-                                   Margin="0,8,0,10"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   TextWrapping="Wrap" />
-
-                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding TemperatureSensors}">
+                            <ItemsControl Grid.Row="1" ItemsSource="{Binding Metrics}" Margin="0,18,0,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Padding="9,7" Margin="0,0,0,6" Background="{DynamicResource SurfaceMutedBrush}" CornerRadius="7">
+                                        <Border Width="228" Height="166" Margin="0,0,14,14" Padding="15" Style="{StaticResource CardBorderStyle}">
                                             <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="5" Padding="5,2" Margin="0,0,6,0">
-                                                            <TextBlock Text="{Binding HardwareType}" FontSize="10" Foreground="{DynamicResource AccentBrush}" />
-                                                        </Border>
-                                                        <TextBlock Text="{Binding SensorName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                    </StackPanel>
-                                                    <TextBlock Text="{Binding HardwareName}"
-                                                               Margin="0,4,0,0"
-                                                               FontSize="11"
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="*" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="36" Height="36" CornerRadius="11" Background="{DynamicResource AccentSoftBrush}">
+                                                        <TextBlock Text="{Binding Icon}"
+                                                                   FontFamily="{StaticResource IconFont}"
+                                                                   Foreground="{Binding AccentBrush}"
+                                                                   FontSize="16"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding Title}"
+                                                               Margin="10,0,0,0"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
                                                                Foreground="{DynamicResource TextSecondaryBrush}"
+                                                               VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis" />
+                                                    <Button Grid.Column="2"
+                                                            Width="28"
+                                                            Height="28"
+                                                            MinWidth="0"
+                                                            Padding="0"
+                                                            Tag="{Binding Id}"
+                                                            Style="{StaticResource SecondaryButtonStyle}"
+                                                            Click="RemoveModule_Click"
+                                                            ToolTip="移除此模块">
+                                                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10" />
+                                                    </Button>
+                                                </Grid>
+                                                <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding ValueText}" FontSize="34" FontWeight="Bold" />
+                                                    <TextBlock Text="{Binding Unit}" Margin="7,12,0,0" FontSize="13"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}" />
                                                 </StackPanel>
-                                                <TextBlock Grid.Column="1"
-                                                           Text="{Binding ValueText}"
-                                                           FontSize="13"
-                                                           FontWeight="SemiBold"
-                                                           VerticalAlignment="Center"
-                                                           Margin="10,0,0,0" />
+                                                <TextBlock Grid.Row="2"
+                                                           Text="{Binding Subtitle}"
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <ComboBox Grid.Row="3"
+                                                          ItemsSource="{Binding SensorOptions}"
+                                                          SelectedValue="{Binding SelectedSensorId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          SelectedValuePath="Id"
+                                                          DisplayMemberPath="DisplayName"
+                                                          Foreground="{DynamicResource TextPrimaryBrush}"
+                                                          Background="{DynamicResource InputBackgroundBrush}"
+                                                          BorderBrush="{DynamicResource BorderBrush}"
+                                                          IsEnabled="{Binding CanSelectSensor}"
+                                                          Height="30"
+                                                          Margin="0,8,0,0"
+                                                          FontSize="12"
+                                                          DropDownClosed="SensorCombo_DropDownClosed"
+                                                          SelectionChanged="SensorCombo_SelectionChanged" />
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </ScrollViewer>
-                    </Grid>
-                </Border>
+                        </Grid>
+                    </Border>
+
+                    <Border Margin="0,16,0,0" Height="292" Padding="20" Style="{StaticResource CardBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid>
+                                <StackPanel>
+                                    <TextBlock Text="60 秒负载曲线" FontSize="18" FontWeight="Bold" />
+                                    <TextBlock Text="CPU、GPU 与内存占用趋势"
+                                               Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                                        <Ellipse Width="8" Height="8" Fill="{DynamicResource GraphCpuBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Text="CPU" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                                        <Ellipse Width="8" Height="8" Fill="{DynamicResource GraphGpuBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Text="GPU" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Fill="{DynamicResource GraphMemoryBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Text="内存" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Grid.Row="1"
+                                    Margin="0,18,0,0"
+                                    Padding="10"
+                                    CornerRadius="12"
+                                    Background="{DynamicResource SurfaceMutedBrush}">
+                                <controls:HistoryGraph CpuValues="{Binding CpuHistory}"
+                                                       GpuValues="{Binding GpuHistory}"
+                                                       MemoryValues="{Binding MemoryHistory}" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                </StackPanel>
             </Grid>
         </StackPanel>
     </ScrollViewer>

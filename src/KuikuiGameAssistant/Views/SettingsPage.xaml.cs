@@ -22,6 +22,8 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
         InitializeComponent();
         _updateService = updateService;
         ThemeModeComboBox.ItemsSource = ThemeModeOption.All;
+        BackgroundModeComboBox.ItemsSource = BackgroundModeOption.All;
+        FontModeComboBox.ItemsSource = FontModeOption.All;
         DataContext = settings;
         UpdateStatusText.Text = $"当前版本 {_updateService.CurrentVersion}。GitHub API 受限时可复制固定直链手动下载。";
     }
@@ -471,6 +473,33 @@ public partial class SettingsPage : System.Windows.Controls.UserControl
             new(AppThemeMode.System, "跟随系统"),
             new(AppThemeMode.Light, "浅色模式"),
             new(AppThemeMode.Dark, "深色模式")
+        ];
+
+        public override string ToString() => Title;
+    }
+
+    private sealed record BackgroundModeOption(AppBackgroundMode Mode, string Title)
+    {
+        public static IReadOnlyList<BackgroundModeOption> All { get; } =
+        [
+            new(AppBackgroundMode.Solid, "纯色"),
+            new(AppBackgroundMode.Acrylic, "亚克力"),
+            new(AppBackgroundMode.MicaAlt, "云母 Alt"),
+            new(AppBackgroundMode.Aurora, "霞光")
+        ];
+
+        public override string ToString() => Title;
+    }
+
+    private sealed record FontModeOption(AppFontMode Mode, string Title)
+    {
+        public static IReadOnlyList<FontModeOption> All { get; } =
+        [
+            new(AppFontMode.System, "系统默认"),
+            new(AppFontMode.MicrosoftYaHeiUi, "微软雅黑 UI"),
+            new(AppFontMode.DengXian, "等线"),
+            new(AppFontMode.SimHei, "黑体"),
+            new(AppFontMode.SimSun, "宋体")
         ];
 
         public override string ToString() => Title;

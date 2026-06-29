@@ -23,10 +23,59 @@
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="1"
             CornerRadius="10"
+            Background="{DynamicResource WindowBackgroundBrush}"
             SnapsToDevicePixels="True">
-        <Grid>
+        <Grid ClipToBounds="True">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop x:Name="WindowBackgroundStart" Color="{DynamicResource SurfaceColor}" Offset="0" />
+                    <GradientStop x:Name="WindowBackgroundMiddle" Color="{DynamicResource WindowBackgroundColor}" Offset="0.52" />
+                    <GradientStop x:Name="WindowBackgroundEnd" Color="{DynamicResource SurfaceMutedColor}" Offset="1" />
+                </LinearGradientBrush>
+            </Grid.Background>
+            <Ellipse x:Name="BackgroundGlowPrimary"
+                     Width="420"
+                     Height="220"
+                     Margin="-130,-92,0,0"
+                     HorizontalAlignment="Left"
+                     VerticalAlignment="Top"
+                     Fill="{DynamicResource AccentSoftBrush}"
+                     Opacity="0.72"
+                     IsHitTestVisible="False">
+                <Ellipse.Effect>
+                    <BlurEffect Radius="58" />
+                </Ellipse.Effect>
+            </Ellipse>
+            <Ellipse x:Name="BackgroundGlowSecondary"
+                     Width="360"
+                     Height="220"
+                     Margin="0,110,-120,0"
+                     HorizontalAlignment="Right"
+                     VerticalAlignment="Top"
+                     Fill="{DynamicResource AccentCyanBrush}"
+                     Opacity="0.18"
+                     IsHitTestVisible="False">
+                <Ellipse.Effect>
+                    <BlurEffect Radius="64" />
+                </Ellipse.Effect>
+            </Ellipse>
+            <Ellipse x:Name="BackgroundGlowTertiary"
+                     Width="300"
+                     Height="190"
+                     Margin="260,0,0,-110"
+                     HorizontalAlignment="Left"
+                     VerticalAlignment="Bottom"
+                     Fill="{DynamicResource AccentVioletBrush}"
+                     Opacity="0.14"
+                     IsHitTestVisible="False">
+                <Ellipse.Effect>
+                    <BlurEffect Radius="64" />
+                </Ellipse.Effect>
+            </Ellipse>
+
+            <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="42" />
+                <RowDefinition Height="48" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -43,6 +92,16 @@
                            RenderOptions.BitmapScalingMode="HighQuality" />
                     <TextBlock Text="盔盔游戏助手" Margin="10,0,0,0" FontSize="13" FontWeight="SemiBold"
                                VerticalAlignment="Center" />
+                    <Border Margin="12,0,0,0"
+                            Padding="8,3"
+                            CornerRadius="8"
+                            Background="{DynamicResource AccentSoftBrush}"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Game Assistant"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" />
+                    </Border>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -72,19 +131,18 @@
 
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="224" />
+                    <ColumnDefinition Width="196" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,1,0">
+                <Border Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
                     <Grid>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <StackPanel Margin="0,18,0,0">
+                        <StackPanel Margin="0,14,0,0">
                             <Button x:Name="DashboardNav" Tag="Dashboard" Style="{StaticResource NavButtonStyle}" Click="Nav_Click">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -135,55 +193,79 @@
                                     <TextBlock Grid.Column="1" Text="游戏滤镜" FontSize="14" VerticalAlignment="Center" />
                                 </Grid>
                             </Button>
-                            <Button x:Name="SettingsNav" Tag="Settings" Style="{StaticResource NavButtonStyle}" Click="Nav_Click">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="26" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="&#xE713;" Style="{StaticResource IconTextStyle}" />
-                                    <TextBlock Grid.Column="1" Text="设置" FontSize="14" VerticalAlignment="Center" />
-                                </Grid>
-                            </Button>
                         </StackPanel>
 
-                        <Border Grid.Row="2" Margin="14,0,14,18" Padding="12" Style="{StaticResource CardBorderStyle}">
-                            <StackPanel>
-                                <TextBlock Text="采集状态" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource StatusOkBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Text="传感器服务运行中" Margin="8,0,0,0" FontSize="12" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
+                        <Button x:Name="SettingsNav"
+                                Grid.Row="1"
+                                Tag="Settings"
+                                Width="42"
+                                Height="42"
+                                MinWidth="0"
+                                Padding="0"
+                                Margin="10,0,0,16"
+                                HorizontalAlignment="Left"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                FocusVisualStyle="{x:Null}"
+                                Click="Nav_Click"
+                                ToolTip="设置">
+                            <Button.Template>
+                                <ControlTemplate TargetType="{x:Type Button}">
+                                    <Border x:Name="Root"
+                                            Background="Transparent"
+                                            CornerRadius="10">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ControlPressedBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <TextBlock Text="&#xE713;" Style="{StaticResource IconTextStyle}" />
+                        </Button>
                     </Grid>
                 </Border>
 
-                <Grid Grid.Column="1" Background="{DynamicResource WindowBackgroundBrush}">
+                <Grid Grid.Column="1" Background="{DynamicResource ContentBackgroundBrush}">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="92" />
+                        <RowDefinition Height="112" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <Grid Margin="28,18,28,14">
+                    <Grid Margin="32,22,32,18">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock x:Name="PageTitle" Text="实时监控" FontSize="26" FontWeight="SemiBold" />
+                            <Border Width="112"
+                                    Padding="10,4"
+                                    CornerRadius="10"
+                                    HorizontalAlignment="Left"
+                                    Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="CONTROL PANEL"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           HorizontalAlignment="Center" />
+                            </Border>
+                            <TextBlock x:Name="PageTitle" Text="实时监控" Margin="0,7,0,0" FontSize="28" FontWeight="Bold" />
                             <TextBlock x:Name="PageSubtitle" Text="帧率、负载、温度和内存状态" Margin="0,6,0,0"
                                        FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                            <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,0" Click="Refresh_Click"
-                                    ToolTip="刷新当前页面">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE72C;" Style="{StaticResource IconTextStyle}" Margin="0,0,8,0" />
-                                    <TextBlock Text="刷新" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="OverlayButton" Style="{StaticResource PrimaryButtonStyle}" Click="Overlay_Click" ToolTip="打开或关闭悬浮监控窗">
+                            <Button x:Name="OverlayButton"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Background="{DynamicResource AccentBrush}"
+                                    Click="Overlay_Click"
+                                    ToolTip="打开或关闭悬浮监控窗">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE7F4;" Style="{StaticResource IconTextStyle}" Foreground="{DynamicResource PrimaryButtonForegroundBrush}" Margin="0,0,8,0" />
                                     <TextBlock x:Name="OverlayButtonText" Text="悬浮窗" VerticalAlignment="Center" />
@@ -192,7 +274,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <ContentControl x:Name="PageHost" Grid.Row="1" Margin="28,0,28,28" />
+                    <ContentControl x:Name="PageHost" Grid.Row="1" Margin="32,0,32,32" />
                 </Grid>
             </Grid>
 
@@ -242,6 +324,7 @@
                                VerticalAlignment="Center" />
                 </Grid>
             </Border>
+            </Grid>
         </Grid>
     </Border>
 </Window>

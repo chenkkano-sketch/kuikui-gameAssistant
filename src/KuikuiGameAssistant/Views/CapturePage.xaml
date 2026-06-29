@@ -4,70 +4,138 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.02*" />
-                <ColumnDefinition Width="1.18*" />
+                <ColumnDefinition Width="1.15*" />
+                <ColumnDefinition Width="0.85*" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                <Border Padding="20" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
-                    <StackPanel>
-                        <Grid>
-                            <StackPanel>
-                                <TextBlock Text="截图" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="区域 PNG / 编辑完成复制到剪切板"
-                                           Margin="0,6,0,0"
-                                           FontSize="13"
-                                           Foreground="{DynamicResource TextSecondaryBrush}" />
-                            </StackPanel>
-                            <Button Style="{StaticResource PrimaryButtonStyle}"
-                                    HorizontalAlignment="Right"
-                                    Click="Screenshot_Click">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE722;" Style="{StaticResource IconTextStyle}" Foreground="{DynamicResource PrimaryButtonForegroundBrush}" Margin="0,0,8,0" />
-                                    <TextBlock Text="区域截图" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                <Border Padding="22" Style="{StaticResource CardBorderStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-                        <Border Margin="0,18,0,0" Background="{DynamicResource SurfaceMutedBrush}" CornerRadius="8" Padding="12">
-                            <TextBlock x:Name="ScreenshotStatus"
-                                       Text="就绪"
-                                       FontSize="13"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       TextWrapping="Wrap" />
+                        <Border Margin="0,0,10,0"
+                                Padding="20"
+                                CornerRadius="14"
+                                Background="{DynamicResource AccentSoftBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Border Width="52"
+                                        Height="52"
+                                        CornerRadius="15"
+                                        HorizontalAlignment="Left"
+                                        Background="{DynamicResource SurfaceBrush}">
+                                    <TextBlock Text="&#xE722;"
+                                               Style="{StaticResource IconTextStyle}"
+                                               FontSize="22"
+                                               Foreground="{DynamicResource AccentBrush}" />
+                                </Border>
+                                <StackPanel Grid.Row="1" Margin="0,20,0,18">
+                                    <TextBlock Text="区域截图" FontSize="24" FontWeight="Bold" />
+                                    <TextBlock Text="PNG / 编辑完成复制到剪切板"
+                                               Margin="0,6,0,0"
+                                               FontSize="13"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <Button Grid.Row="2"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Height="44"
+                                        Click="Screenshot_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE722;" Style="{StaticResource IconTextStyle}" Foreground="{DynamicResource PrimaryButtonForegroundBrush}" Margin="0,0,8,0" />
+                                        <TextBlock Text="开始截图" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
                         </Border>
-                    </StackPanel>
+
+                        <Border Grid.Column="1"
+                                Margin="10,0,0,0"
+                                Padding="20"
+                                CornerRadius="14"
+                                Background="{DynamicResource SurfaceMutedBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Border Width="52"
+                                        Height="52"
+                                        CornerRadius="15"
+                                        HorizontalAlignment="Left"
+                                        Background="{DynamicResource SurfaceBrush}">
+                                    <TextBlock Text="&#xE714;"
+                                               Style="{StaticResource IconTextStyle}"
+                                               FontSize="22"
+                                               Foreground="{DynamicResource AccentVioletBrush}" />
+                                </Border>
+                                <StackPanel Grid.Row="1" Margin="0,20,0,18">
+                                    <TextBlock Text="录制桌面" FontSize="24" FontWeight="Bold" />
+                                    <TextBlock Text="MP4 / H.264 / 主显示器"
+                                               Margin="0,6,0,0"
+                                               FontSize="13"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <Button x:Name="RecordButton"
+                                        Grid.Row="2"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Height="44"
+                                        Click="Record_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE714;" Style="{StaticResource IconTextStyle}" Foreground="{DynamicResource PrimaryButtonForegroundBrush}" Margin="0,0,8,0" />
+                                        <TextBlock x:Name="RecordButtonText" Text="开始录屏" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </Grid>
                 </Border>
 
-                <Border Padding="20" Style="{StaticResource CardBorderStyle}">
+                <Grid Height="0" Visibility="Collapsed">
+                    <TextBlock x:Name="ScreenshotStatus" Text="就绪" />
+                    <TextBlock x:Name="RecordStatus" Text="就绪" />
+                </Grid>
+
+                <Border Margin="0,16,0,0" Padding="20" Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
-                        <TextBlock Text="保存路径" FontSize="18" FontWeight="SemiBold" />
-                        <Grid Margin="0,14,0,0">
+                        <TextBlock Text="保存路径" FontSize="18" FontWeight="Bold" />
+                        <Grid Margin="0,16,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="78" />
+                                <ColumnDefinition Width="88" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="72" />
+                                <ColumnDefinition Width="76" />
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="48" />
-                                <RowDefinition Height="48" />
+                                <RowDefinition Height="50" />
+                                <RowDefinition Height="50" />
                             </Grid.RowDefinitions>
 
-                            <TextBlock Text="截图" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="截图" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1"
                                      Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding ScreenshotFolder, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                             <Button Grid.Column="2"
                                     Style="{StaticResource SecondaryButtonStyle}"
-                                    Height="36"
-                                    Width="62"
+                                    Height="38"
+                                    Width="66"
                                     MinWidth="0"
                                     Margin="10,0,0,0"
                                     Click="BrowseScreenshotFolder_Click">
                                 <TextBlock Text="浏览" />
                             </Button>
 
-                            <TextBlock Grid.Row="1" Text="视频" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1" Text="视频" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                             <TextBox Grid.Row="1"
                                      Grid.Column="1"
                                      Style="{StaticResource InputTextBoxStyle}"
@@ -75,8 +143,8 @@
                             <Button Grid.Row="1"
                                     Grid.Column="2"
                                     Style="{StaticResource SecondaryButtonStyle}"
-                                    Height="36"
-                                    Width="62"
+                                    Height="38"
+                                    Width="66"
                                     MinWidth="0"
                                     Margin="10,0,0,0"
                                     Click="BrowseRecordingFolder_Click">
@@ -88,54 +156,28 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1">
-                <Border Padding="20" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
+                <Border Padding="20" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
                     <StackPanel>
+                        <TextBlock Text="录制参数" FontSize="18" FontWeight="Bold" />
+                        <TextBlock Text="输出质量、码率和缩放比例"
+                                   Margin="0,5,0,16"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" />
                         <Grid>
-                            <StackPanel>
-                                <TextBlock Text="录屏" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="MP4 / H.264 · 主显示器"
-                                           Margin="0,6,0,0"
-                                           FontSize="13"
-                                           Foreground="{DynamicResource TextSecondaryBrush}" />
-                            </StackPanel>
-                            <Button x:Name="RecordButton"
-                                    Style="{StaticResource PrimaryButtonStyle}"
-                                    HorizontalAlignment="Right"
-                                    Click="Record_Click">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE714;" Style="{StaticResource IconTextStyle}" Foreground="{DynamicResource PrimaryButtonForegroundBrush}" Margin="0,0,8,0" />
-                                    <TextBlock x:Name="RecordButtonText" Text="开始录屏" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-
-                        <Border Margin="0,18,0,0" Background="{DynamicResource SurfaceMutedBrush}" CornerRadius="8" Padding="12">
-                            <TextBlock x:Name="RecordStatus"
-                                       Text="就绪"
-                                       FontSize="13"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       TextWrapping="Wrap" />
-                        </Border>
-                    </StackPanel>
-                </Border>
-
-                <Border Padding="20" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
-                    <StackPanel>
-                        <TextBlock Text="画质设定" FontSize="18" FontWeight="SemiBold" />
-                        <Grid Margin="0,14,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="96" />
+                                <ColumnDefinition Width="86" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="46" />
-                                <RowDefinition Height="46" />
-                                <RowDefinition Height="46" />
+                                <RowDefinition Height="42" />
+                                <RowDefinition Height="42" />
+                                <RowDefinition Height="42" />
                             </Grid.RowDefinitions>
 
-                            <TextBlock Text="帧率" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="帧率" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                             <ComboBox x:Name="FrameRateCombo"
                                       Grid.Column="1"
+                                      Height="34"
                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                       Background="{DynamicResource InputBackgroundBrush}"
                                       BorderBrush="{DynamicResource BorderBrush}"
@@ -143,10 +185,11 @@
                                       SelectedValuePath="Value"
                                       SelectedValue="{Binding RecordingFrameRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <TextBlock Grid.Row="1" Text="码率" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1" Text="码率" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                             <ComboBox x:Name="BitrateCombo"
                                       Grid.Row="1"
                                       Grid.Column="1"
+                                      Height="34"
                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                       Background="{DynamicResource InputBackgroundBrush}"
                                       BorderBrush="{DynamicResource BorderBrush}"
@@ -154,10 +197,11 @@
                                       SelectedValuePath="Value"
                                       SelectedValue="{Binding RecordingBitrateKbps, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <TextBlock Grid.Row="2" Text="分辨率" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="2" Text="分辨率" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                             <ComboBox x:Name="ScaleCombo"
                                       Grid.Row="2"
                                       Grid.Column="1"
+                                      Height="34"
                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                       Background="{DynamicResource InputBackgroundBrush}"
                                       BorderBrush="{DynamicResource BorderBrush}"
@@ -170,20 +214,24 @@
 
                 <Border Padding="20" Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
-                        <TextBlock Text="录制开关" FontSize="18" FontWeight="SemiBold" />
-                        <UniformGrid Columns="2" Margin="0,14,0,0">
-                            <CheckBox Content="HDR"
+                        <TextBlock Text="录制轨道" FontSize="18" FontWeight="Bold" />
+                        <TextBlock Text="录屏时同步写入的画面和音频信息"
+                                   Margin="0,5,0,16"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <UniformGrid Columns="1">
+                            <CheckBox Content="HDR 画面"
                                       Style="{StaticResource SwitchCheckBoxStyle}"
                                       IsChecked="{Binding RecordHdr, Mode=TwoWay}"
-                                      Margin="0,0,14,12" />
+                                      Margin="0,0,0,14" />
                             <CheckBox Content="系统声音"
                                       Style="{StaticResource SwitchCheckBoxStyle}"
                                       IsChecked="{Binding RecordSystemAudio, Mode=TwoWay}"
-                                      Margin="0,0,0,12" />
+                                      Margin="0,0,0,14" />
                             <CheckBox Content="麦克风"
                                       Style="{StaticResource SwitchCheckBoxStyle}"
                                       IsChecked="{Binding RecordMicrophone, Mode=TwoWay}"
-                                      Margin="0,0,14,0" />
+                                      Margin="0,0,0,14" />
                             <CheckBox Content="显示鼠标"
                                       Style="{StaticResource SwitchCheckBoxStyle}"
                                       IsChecked="{Binding ShowMouseCursorInRecording, Mode=TwoWay}" />

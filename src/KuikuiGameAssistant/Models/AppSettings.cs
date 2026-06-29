@@ -12,6 +12,8 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
     private bool _enablePresentMon = true;
     private bool _memoryOptimizedDefaultsApplied;
     private AppThemeMode _themeMode = AppThemeMode.System;
+    private AppBackgroundMode _backgroundMode = AppBackgroundMode.Aurora;
+    private AppFontMode _fontMode = AppFontMode.System;
     private bool _recordHdr;
     private bool _recordSystemAudio;
     private bool _recordMicrophone;
@@ -89,6 +91,18 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
     {
         get => _themeMode;
         set => SetProperty(ref _themeMode, value);
+    }
+
+    public AppBackgroundMode BackgroundMode
+    {
+        get => _backgroundMode;
+        set => SetProperty(ref _backgroundMode, value);
+    }
+
+    public AppFontMode FontMode
+    {
+        get => _fontMode;
+        set => SetProperty(ref _fontMode, value);
     }
 
     [System.Text.Json.Serialization.JsonIgnore]

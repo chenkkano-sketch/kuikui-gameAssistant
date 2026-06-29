@@ -333,13 +333,40 @@
                     </StackPanel>
                 </Grid>
 
-                <Border Grid.Row="1" Margin="0,16,0,0" Background="{DynamicResource WindowBackgroundBrush}" CornerRadius="8" ClipToBounds="True">
-                    <Viewbox Stretch="Uniform" Margin="18">
+                <Border Grid.Row="1" Margin="0,16,0,0" Background="#FF0B1220" CornerRadius="14" ClipToBounds="True">
+                    <Grid>
+                        <Grid.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#FF0B1220" Offset="0" />
+                                <GradientStop Color="#FF172554" Offset="0.55" />
+                                <GradientStop Color="#FF052E2B" Offset="1" />
+                            </LinearGradientBrush>
+                        </Grid.Background>
+                        <Rectangle Opacity="0.18">
+                            <Rectangle.Fill>
+                                <DrawingBrush TileMode="Tile" Viewport="0,0,32,32" ViewportUnits="Absolute">
+                                    <DrawingBrush.Drawing>
+                                        <GeometryDrawing Brush="Transparent">
+                                            <GeometryDrawing.Pen>
+                                                <Pen Brush="#FFFFFFFF" Thickness="0.8" />
+                                            </GeometryDrawing.Pen>
+                                            <GeometryDrawing.Geometry>
+                                                <GeometryGroup>
+                                                    <LineGeometry StartPoint="0,0" EndPoint="32,0" />
+                                                    <LineGeometry StartPoint="0,0" EndPoint="0,32" />
+                                                </GeometryGroup>
+                                            </GeometryDrawing.Geometry>
+                                        </GeometryDrawing>
+                                    </DrawingBrush.Drawing>
+                                </DrawingBrush>
+                            </Rectangle.Fill>
+                        </Rectangle>
+                    <Viewbox Stretch="Uniform" Margin="28">
                         <Grid Width="760" Height="430">
-                            <Border Background="{DynamicResource InputBackgroundBrush}" CornerRadius="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" />
+                            <Border Background="#331E293B" CornerRadius="14" BorderBrush="#40FFFFFF" BorderThickness="1" />
                             <Grid Margin="18">
                                 <TextBlock Text="{Binding PrimaryResolutionText}"
-                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Foreground="#BFFFFFFF"
                                            FontSize="14"
                                            HorizontalAlignment="Right"
                                            VerticalAlignment="Bottom" />
@@ -350,10 +377,16 @@
                                     Height="{Binding CurrentHeight}"
                                     Background="{Binding BackgroundBrush}"
                                     BorderThickness="0"
-                                    CornerRadius="8"
-                                    Padding="6"
+                                    CornerRadius="10"
+                                    Padding="8"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="18"
+                                                      ShadowDepth="6"
+                                                      Opacity="0.42"
+                                                      Color="#FF000000" />
+                                </Border.Effect>
                                 <Grid>
                                     <ItemsControl x:Name="PreviewHorizontalPanel"
                                                   ItemsSource="{Binding Metrics}"
@@ -437,6 +470,7 @@
                             </Border>
                         </Grid>
                     </Viewbox>
+                    </Grid>
                 </Border>
             </Grid>
         </Border>
