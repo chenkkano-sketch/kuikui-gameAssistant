@@ -38,6 +38,7 @@ public sealed class SettingsService
             AppSettings = document.App ?? new AppSettings();
             AppSettings.GameFilter ??= new GameFilterSettings();
             AppSettings.GameFilter.Presets ??= new System.Collections.ObjectModel.ObservableCollection<GameFilterPreset>();
+            AppSettings.MotionSickness ??= new MotionSicknessSettings();
             AppSettings.MonitorModules ??= MonitorModuleConfig.CreateDefaults();
             if (AppSettings.MonitorModules.Count == 0)
             {

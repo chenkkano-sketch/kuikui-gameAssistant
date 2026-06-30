@@ -1,0 +1,223 @@
+<UserControl x:Class="KuikuiGameAssistant.Views.MotionSicknessPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.05*" />
+                <ColumnDefinition Width="0.95*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                <Border Padding="20" Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <TextBlock Text="视觉稳定辅助" FontSize="20" FontWeight="Bold" />
+                        <TextBlock Text="给高速运动的 3D 画面提供固定参考点，适合第一人称和镜头频繁转动的游戏。"
+                                   Margin="0,5,0,16"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Padding="16" CornerRadius="8" Background="{DynamicResource SurfaceMutedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,8,0">
+                                <StackPanel>
+                                    <CheckBox Content="启用 3D 眩晕缓解" Style="{StaticResource SwitchCheckBoxStyle}" IsChecked="{Binding IsEnabled, Mode=TwoWay}" />
+                                    <CheckBox Content="仅全屏/无边框游戏生效"
+                                              Margin="0,12,0,0"
+                                              IsChecked="{Binding OnlyShowInFullscreen, Mode=TwoWay}" />
+                                    <TextBlock Text="设置页始终保留实时预览；屏幕叠加层只在符合条件时显示。"
+                                               Margin="0,12,0,0"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Padding="16" CornerRadius="8" Background="{DynamicResource SurfaceMutedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="8,0,0,0">
+                                <StackPanel>
+                                    <CheckBox Content="启用隧道视野" Style="{StaticResource SwitchCheckBoxStyle}" IsChecked="{Binding TunnelVisionEnabled, Mode=TwoWay}" />
+                                    <TextBlock Text="轻微压暗边缘，减少画面边缘快速运动带来的不适。" Margin="0,12,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Margin="0,16,0,0" Padding="20" Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <TextBlock Text="显示元素" FontSize="18" FontWeight="Bold" />
+                        <TextBlock Text="默认开启中心准心和四边参考线；可按游戏 UI 位置单独关闭。"
+                                   Margin="0,5,0,16"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+                        <UniformGrid Columns="2">
+                            <CheckBox Content="中心准心" Margin="0,0,10,12" IsChecked="{Binding ShowCenterCrosshair, Mode=TwoWay}" />
+                            <CheckBox Content="上方参考线" Margin="10,0,0,12" IsChecked="{Binding ShowTopBar, Mode=TwoWay}" />
+                            <CheckBox Content="下方参考线" Margin="0,0,10,12" IsChecked="{Binding ShowBottomBar, Mode=TwoWay}" />
+                            <CheckBox Content="左侧参考线" Margin="10,0,0,12" IsChecked="{Binding ShowLeftBar, Mode=TwoWay}" />
+                            <CheckBox Content="右侧参考线" Margin="0,0,10,0" IsChecked="{Binding ShowRightBar, Mode=TwoWay}" />
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <Border Margin="0,16,0,0" Padding="20" Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <TextBlock Text="线条参数" FontSize="18" FontWeight="Bold" />
+                        <TextBlock Text="线条颜色" Margin="0,14,0,8" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <WrapPanel>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="ColorWhite_Click"><TextBlock Text="白" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="ColorBlack_Click"><TextBlock Text="黑" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="ColorGreen_Click"><TextBlock Text="绿" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="ColorYellow_Click"><TextBlock Text="黄" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="ColorRed_Click"><TextBlock Text="红" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="96" Margin="0,0,8,8" Click="PickBarColor_Click"><TextBlock Text="取色器" /></Button>
+                        </WrapPanel>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="64" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="颜色值" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Style="{StaticResource InputTextBoxStyle}" Text="{Binding BarColorHex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <Border x:Name="BarColorPreview" Grid.Column="2" Width="42" Height="28" CornerRadius="7" HorizontalAlignment="Right" Background="{DynamicResource SurfaceMutedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" />
+
+                            <TextBlock Grid.Row="1" Text="准心样式" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <ComboBox x:Name="CrosshairStyleCombo" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Height="38" DisplayMemberPath="Name" SelectionChanged="CrosshairStyleCombo_SelectionChanged" />
+
+                            <TextBlock Grid.Row="2" Text="透明度" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="2" Grid.Column="1" Minimum="5" Maximum="100" Value="{Binding Opacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding Opacity, StringFormat={}{0:0}%}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="3" Text="准心尺寸" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="3" Grid.Column="1" Minimum="4" Maximum="240" Value="{Binding CrosshairSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding CrosshairSize, StringFormat={}{0:0}px}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="4" Text="准心粗细" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="4" Grid.Column="1" Minimum="1" Maximum="20" Value="{Binding CrosshairThickness, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding CrosshairThickness, StringFormat={}{0:0}px}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="5" Text="准心留空" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding CrosshairGap, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="5" Grid.Column="2" Text="{Binding CrosshairGap, StringFormat={}{0:0}px}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="6" Text="边缘距离" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="6" Grid.Column="1" Minimum="0" Maximum="220" Value="{Binding EdgeDistance, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="6" Grid.Column="2" Text="{Binding EdgeDistance, StringFormat={}{0:0}px}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="7" Text="边缘长度" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="7" Grid.Column="1" Minimum="20" Maximum="1200" Value="{Binding EdgeLength, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="7" Grid.Column="2" Text="{Binding EdgeLength, StringFormat={}{0:0}px}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="8" Text="边缘粗细" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="8" Grid.Column="1" Minimum="1" Maximum="30" Value="{Binding EdgeThickness, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="8" Grid.Column="2" Text="{Binding EdgeThickness, StringFormat={}{0:0}px}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1">
+                <Border Padding="20" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="实时预览" FontSize="18" FontWeight="Bold" />
+                        <Border Margin="0,14,0,0" Height="236" CornerRadius="8" ClipToBounds="True" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Background="#FF151923">
+                            <Grid>
+                                <Grid.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#FF1A2A3C" Offset="0" />
+                                        <GradientStop Color="#FF14171F" Offset="0.48" />
+                                        <GradientStop Color="#FF2C283B" Offset="1" />
+                                    </LinearGradientBrush>
+                                </Grid.Background>
+                                <Canvas x:Name="PreviewCanvas" Width="390" Height="220" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="20" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="推荐配置" FontSize="18" FontWeight="Bold" />
+                        <TextBlock Text="从轻到重逐步尝试，避免一开始就用高对比遮挡画面。" Margin="0,5,0,14" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,8" Click="GentlePreset_Click"><TextBlock Text="轻度：小十字 + 四边参考线" /></Button>
+                        <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,8" Click="BalancedPreset_Click"><TextBlock Text="明显：经典准心 + 轻微隧道视野" /></Button>
+                        <Button Style="{StaticResource SecondaryButtonStyle}" Click="HighContrastPreset_Click"><TextBlock Text="高对比：圆形准心 + 较强边缘压暗" /></Button>
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="20" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="隧道视野" FontSize="18" FontWeight="Bold" />
+                        <TextBlock Text="边缘颜色" Margin="0,14,0,8" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <WrapPanel>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="TunnelColorWhite_Click"><TextBlock Text="白" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="TunnelColorBlack_Click"><TextBlock Text="黑" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="TunnelColorGreen_Click"><TextBlock Text="绿" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="TunnelColorYellow_Click"><TextBlock Text="黄" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="52" Margin="0,0,8,8" Click="TunnelColorRed_Click"><TextBlock Text="红" /></Button>
+                            <Button Style="{StaticResource SecondaryButtonStyle}" MinWidth="96" Margin="0,0,8,8" Click="PickTunnelColor_Click"><TextBlock Text="取色器" /></Button>
+                        </WrapPanel>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="82" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="64" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                                <RowDefinition Height="48" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="颜色值" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Style="{StaticResource InputTextBoxStyle}" Text="{Binding TunnelColorHex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <Border x:Name="TunnelColorPreview" Grid.Column="2" Width="42" Height="28" CornerRadius="7" HorizontalAlignment="Right" Background="{DynamicResource SurfaceMutedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" />
+
+                            <TextBlock Grid.Row="1" Text="强度" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="80" Value="{Binding TunnelIntensity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding TunnelIntensity, StringFormat={}{0:0}%}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Row="2" Text="羽化" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Slider Grid.Row="2" Grid.Column="1" Minimum="10" Maximum="100" Value="{Binding TunnelFeather, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding TunnelFeather, StringFormat={}{0:0}%}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="18" Style="{StaticResource CardBorderStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="38" Height="38" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}">
+                            <TextBlock Text="&#xE7F4;" Style="{StaticResource IconTextStyle}" Foreground="{DynamicResource AccentBrush}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="当前状态" FontSize="14" FontWeight="Bold" />
+                            <TextBlock x:Name="StatusText" Text="辅助线未启用" Margin="0,3,0,0" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

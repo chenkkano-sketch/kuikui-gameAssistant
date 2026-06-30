@@ -11,12 +11,12 @@
 
 ## 下载
 
-当前正式版本：`v1.0.7`
+当前正式版本：`v1.0.8`
 
 前往 [GitHub Releases](https://github.com/chenkkano-sketch/kuikui-gameAssistant/releases/latest) 下载：
 
-- 安装版：`KuikuiGameAssistant-1.0.7-setup.exe`
-- 便携版：`KuikuiGameAssistant-1.0.7-win-x64-portable.zip`
+- 安装版：`KuikuiGameAssistant-1.0.8-setup.exe`
+- 便携版：`KuikuiGameAssistant-1.0.8-win-x64-portable.zip`
 
 固定直链：
 
@@ -89,13 +89,13 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 生成安装版和便携版：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.7
+.\scripts\package.ps1 -Version 1.0.8
 ```
 
 只生成便携 zip：
 
 ```powershell
-.\scripts\package.ps1 -Version 1.0.7 -SkipInstaller
+.\scripts\package.ps1 -Version 1.0.8 -SkipInstaller
 ```
 
 输出文件：
@@ -112,7 +112,7 @@ dotnet run --project .\src\KuikuiGameAssistant\KuikuiGameAssistant.csproj
 推送 tag 即可触发正式发布：
 
 ```powershell
-git tag v1.0.7
+git tag v1.0.8
 git push origin main
 git push origin v1.0.7
 ```

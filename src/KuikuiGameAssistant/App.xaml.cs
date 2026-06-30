@@ -13,6 +13,7 @@ public partial class App : System.Windows.Application
     public static CaptureService Capture { get; private set; } = null!;
     public static UpdateService Updates { get; private set; } = null!;
     public static GameFilterService GameFilters { get; private set; } = null!;
+    public static MotionSicknessService MotionSickness { get; private set; } = null!;
     public static OverlaySettings OverlaySettings { get; private set; } = null!;
     public static SettingsService Settings { get; private set; } = null!;
 
@@ -69,6 +70,8 @@ public partial class App : System.Windows.Application
             Capture = new CaptureService(Settings.AppSettings);
             GameFilters = new GameFilterService();
             GameFilters.Apply(Settings.AppSettings.GameFilter);
+            MotionSickness = new MotionSicknessService();
+            MotionSickness.Apply(Settings.AppSettings.MotionSickness);
 
             AppLogService.Info("Applying startup registration.");
             StartupService.SetEnabled(Settings.AppSettings.StartWithWindows);
@@ -114,6 +117,7 @@ public partial class App : System.Windows.Application
             Capture?.Dispose();
             Telemetry?.Dispose();
             GameFilters?.Dispose();
+            MotionSickness?.Dispose();
             AppThemeService.Stop();
         }
         catch (Exception ex)

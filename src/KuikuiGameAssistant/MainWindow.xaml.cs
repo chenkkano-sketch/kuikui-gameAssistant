@@ -5,6 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using KuikuiGameAssistant.Models;
 using KuikuiGameAssistant.Services;
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
     private readonly CapturePage _capturePage;
     private readonly OverlayPage _overlayPage;
     private readonly GameFilterPage _filterPage;
+    private readonly MotionSicknessPage _motionSicknessPage;
     private readonly SettingsPage _settingsPage;
     private readonly HotkeyService _hotkeys = new();
     private readonly DispatcherTimer _toastHideTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
@@ -41,6 +43,7 @@ public partial class MainWindow : Window
         _capturePage = new CapturePage(App.Capture, App.Settings.AppSettings);
         _overlayPage = new OverlayPage(App.OverlaySettings);
         _filterPage = new GameFilterPage(App.Settings.AppSettings, App.GameFilters);
+        _motionSicknessPage = new MotionSicknessPage(App.Settings.AppSettings, App.MotionSickness);
         _settingsPage = new SettingsPage(App.Settings.AppSettings, App.Updates);
         App.Settings.AppSettings.PropertyChanged += AppSettings_PropertyChanged;
         AppThemeService.ThemeApplied += AppThemeService_ThemeApplied;
@@ -49,6 +52,7 @@ public partial class MainWindow : Window
         _toastHideTimer.Tick += ToastHideTimer_Tick;
 
         Navigate("Dashboard");
+        VersionBadgeText.Text = $"v{GetAppVersion()}";
         ApplyBackgroundMode(App.Settings.AppSettings.BackgroundMode);
         UpdateWindowFrameShape();
     }
@@ -201,6 +205,13 @@ public partial class MainWindow : Window
                 PageSubtitle.Text = "色彩、亮度、暗角和沉浸预设";
                 MarkSelected(FilterNav);
                 break;
+            case "MotionSickness":
+                _currentPage = "MotionSickness";
+                PageHost.Content = _motionSicknessPage;
+                PageTitle.Text = "3D眩晕缓解";
+                PageSubtitle.Text = "固定视觉参考点、中心准心、边缘参考线和隧道视野";
+                MarkSelected(MotionSicknessNav);
+                break;
             default:
                 _currentPage = "Dashboard";
                 PageHost.Content = _dashboardPage;
@@ -213,7 +224,7 @@ public partial class MainWindow : Window
 
     private void ResetNavButtons()
     {
-        foreach (var button in new[] { DashboardNav, HardwareNav, CaptureNav, OverlayNav, FilterNav, SettingsNav })
+        foreach (var button in new[] { DashboardNav, HardwareNav, CaptureNav, OverlayNav, FilterNav, MotionSicknessNav, SettingsNav })
         {
             button.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
             button.FontWeight = FontWeights.Normal;
@@ -226,6 +237,16 @@ public partial class MainWindow : Window
         button.FontWeight = FontWeights.SemiBold;
     }
 
+    private static string GetAppVersion()
+    {
+        var version = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion;
+        return string.IsNullOrWhiteSpace(version)
+            ? "1.0.8"
+            : version.Split('+')[0];
+    }
+
     private void ApplySelectedNavState()
     {
         ResetNavButtons();
@@ -236,6 +257,7 @@ public partial class MainWindow : Window
             "Overlay" => OverlayNav,
             "Settings" => SettingsNav,
             "Filter" => FilterNav,
+            "MotionSickness" => MotionSicknessNav,
             _ => DashboardNav
         });
     }
@@ -372,6 +394,15 @@ public partial class MainWindow : Window
         {
             _hotkeys.Unregister(3);
         }
+
+        if (App.Settings.AppSettings.MotionSicknessHotkeyEnabled)
+        {
+            RegisterConfiguredHotkey(4, App.Settings.AppSettings.MotionSicknessHotkeyText, ToggleMotionSicknessAssist);
+        }
+        else
+        {
+            _hotkeys.Unregister(4);
+        }
     }
 
     private void RegisterConfiguredHotkey(int id, string hotkeyText, Action handler)
@@ -393,7 +424,9 @@ public partial class MainWindow : Window
         if (e.PropertyName is nameof(AppSettings.ScreenshotHotkeyText)
             or nameof(AppSettings.RecordingHotkeyText)
             or nameof(AppSettings.OverlayHotkeyText)
-            or nameof(AppSettings.OverlayHotkeyEnabled))
+            or nameof(AppSettings.OverlayHotkeyEnabled)
+            or nameof(AppSettings.MotionSicknessHotkeyText)
+            or nameof(AppSettings.MotionSicknessHotkeyEnabled))
         {
             RegisterConfiguredHotkeys();
         }
@@ -423,6 +456,11 @@ public partial class MainWindow : Window
         {
             ToastService.ShowSettingsSaved();
         }
+    }
+
+    private void ToggleMotionSicknessAssist()
+    {
+        App.Settings.AppSettings.MotionSickness.IsEnabled = !App.Settings.AppSettings.MotionSickness.IsEnabled;
     }
 
     private static bool ShouldShowSettingsToast(string? propertyName)

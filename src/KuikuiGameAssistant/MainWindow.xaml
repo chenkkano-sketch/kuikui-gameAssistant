@@ -97,7 +97,8 @@
                             CornerRadius="8"
                             Background="{DynamicResource AccentSoftBrush}"
                             VerticalAlignment="Center">
-                        <TextBlock Text="Game Assistant"
+                        <TextBlock x:Name="VersionBadgeText"
+                                   Text="v1.0.8"
                                    FontSize="11"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource AccentBrush}" />
@@ -191,6 +192,16 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="&#xE790;" Style="{StaticResource IconTextStyle}" />
                                     <TextBlock Grid.Column="1" Text="游戏滤镜" FontSize="14" VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
+                            <Button x:Name="MotionSicknessNav" Tag="MotionSickness" Style="{StaticResource NavButtonStyle}" Click="Nav_Click">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="26" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE7BA;" Style="{StaticResource IconTextStyle}" />
+                                    <TextBlock Grid.Column="1" Text="3D眩晕缓解" FontSize="14" VerticalAlignment="Center" />
                                 </Grid>
                             </Button>
                         </StackPanel>

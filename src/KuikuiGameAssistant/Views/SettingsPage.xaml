@@ -127,6 +127,8 @@
                                 <RowDefinition Height="50" />
                                 <RowDefinition Height="50" />
                                 <RowDefinition Height="50" />
+                                <RowDefinition Height="50" />
+                                <RowDefinition Height="50" />
                             </Grid.RowDefinitions>
                             <TextBlock Text="截图" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1"
@@ -155,6 +157,19 @@
                                      LostKeyboardFocus="HotkeyTextBox_LostKeyboardFocus"
                                      PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
                                      Text="{Binding OverlayHotkeyText, Mode=TwoWay, UpdateSourceTrigger=Explicit}" />
+                            <TextBlock Grid.Row="4" Text="眩晕缓解热键" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <CheckBox Grid.Row="4" Grid.Column="1"
+                                      Content="启用一键开关 3D 眩晕缓解"
+                                      IsChecked="{Binding MotionSicknessHotkeyEnabled, Mode=TwoWay}"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="5" Text="开关眩晕缓解" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="5" Grid.Column="1"
+                                     Style="{StaticResource InputTextBoxStyle}"
+                                     IsEnabled="{Binding MotionSicknessHotkeyEnabled}"
+                                     GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus"
+                                     LostKeyboardFocus="HotkeyTextBox_LostKeyboardFocus"
+                                     PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
+                                     Text="{Binding MotionSicknessHotkeyText, Mode=TwoWay, UpdateSourceTrigger=Explicit}" />
                         </Grid>
                     </StackPanel>
                 </Border>

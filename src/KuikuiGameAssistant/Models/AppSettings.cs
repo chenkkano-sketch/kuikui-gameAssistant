@@ -29,6 +29,8 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
     private string _recordingHotkeyText = "Ctrl+Shift+R";
     private bool _overlayHotkeyEnabled = true;
     private string _overlayHotkeyText = "Ctrl+Shift+O";
+    private bool _motionSicknessHotkeyEnabled = true;
+    private string _motionSicknessHotkeyText = "Ctrl+Shift+M";
     private DateTimeOffset _lastUpdateCheckUtc = DateTimeOffset.MinValue;
 
     public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
@@ -202,6 +204,18 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
         set => SetProperty(ref _overlayHotkeyText, value ?? string.Empty);
     }
 
+    public bool MotionSicknessHotkeyEnabled
+    {
+        get => _motionSicknessHotkeyEnabled;
+        set => SetProperty(ref _motionSicknessHotkeyEnabled, value);
+    }
+
+    public string MotionSicknessHotkeyText
+    {
+        get => _motionSicknessHotkeyText;
+        set => SetProperty(ref _motionSicknessHotkeyText, value ?? string.Empty);
+    }
+
     public DateTimeOffset LastUpdateCheckUtc
     {
         get => _lastUpdateCheckUtc;
@@ -209,6 +223,8 @@ public sealed class AppSettings : System.ComponentModel.INotifyPropertyChanged
     }
 
     public GameFilterSettings GameFilter { get; set; } = new();
+
+    public MotionSicknessSettings MotionSickness { get; set; } = new();
 
     public System.Collections.ObjectModel.ObservableCollection<MonitorModuleConfig> MonitorModules { get; set; } = MonitorModuleConfig.CreateDefaults();
 
